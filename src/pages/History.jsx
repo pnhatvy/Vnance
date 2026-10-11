@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Trash2,
   Calendar,
@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Repeat,
+  Copy,
 } from "lucide-react";
 import { useAppContext } from "../AppContext";
 
@@ -13,6 +14,7 @@ const SwipeableItem = ({
   children,
   onEdit,
   onDelete,
+  onDuplicate,
   isLast,
   theme,
   txType,
@@ -23,14 +25,27 @@ const SwipeableItem = ({
   const [isSwiping, setIsSwiping] = useState(false);
   const [isVerticalScroll, setIsVerticalScroll] = useState(false);
 
+  const pressTimer = useRef(null);
+  const [showDuplicate, setShowDuplicate] = useState(false);
+
   const handleTouchStart = (e) => {
     setStartX(e.touches[0].clientX);
     setStartY(e.touches[0].clientY);
     setIsSwiping(true);
     setIsVerticalScroll(false);
+    setShowDuplicate(false);
+
+    // Kích hoạt nhấn giữ (Long press) sau 0.4s
+    pressTimer.current = setTimeout(() => {
+      if ("vibrate" in navigator) navigator.vibrate(50);
+      setShowDuplicate(true);
+    }, 400);
   };
 
   const handleTouchMove = (e) => {
+    if (pressTimer.current) clearTimeout(pressTimer.current);
+    setShowDuplicate(false);
+
     if (!isSwiping) return;
     const currentX = e.touches[0].clientX;
     const currentY = e.touches[0].clientY;
@@ -52,7 +67,9 @@ const SwipeableItem = ({
   };
 
   const handleTouchEnd = () => {
+    if (pressTimer.current) clearTimeout(pressTimer.current);
     setIsSwiping(false);
+
     if (isVerticalScroll) {
       setOffsetX(0);
       return;
@@ -84,6 +101,7 @@ const SwipeableItem = ({
           <Trash2 size={18} />
         </div>
       </div>
+
       <div
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -91,6 +109,28 @@ const SwipeableItem = ({
         className={`relative w-full transition-transform duration-200 ease-out flex items-center py-3.5 px-4 pl-5 ${theme === "dark" ? "bg-black" : "bg-[#f2f2f7]"} ${!isLast ? (theme === "dark" ? "border-b border-[#1c1c1e]" : "border-b border-gray-200") : ""}`}
         style={{ transform: `translateX(${offsetX}px)` }}
       >
+        {/* OVERLAY TÍNH NĂNG NHÂN BẢN KHI NHẤN GIỮ */}
+        {showDuplicate && (
+          <div
+            className="absolute inset-0 z-[60] flex items-center justify-center bg-black/20 backdrop-blur-[2px] animate-ios-fade"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDuplicate(false);
+            }}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDuplicate(false);
+                if (onDuplicate) onDuplicate();
+              }}
+              className="bg-[#32ade6] text-white px-5 py-2.5 rounded-full font-bold text-[13px] shadow-lg flex items-center gap-2 active:scale-95 transition-transform"
+            >
+              <Copy size={16} /> Duplicate for today
+            </button>
+          </div>
+        )}
+
         <div
           className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-md opacity-70"
           style={{ backgroundColor: indicatorColor }}
@@ -199,6 +239,22 @@ export default function History() {
   const sortedGroups = Object.values(groupedData).sort(
     (a, b) => b.date - a.date,
   );
+
+  const handleDuplicate = (item) => {
+    const txs = JSON.parse(localStorage.getItem("vys_transactions") || "[]");
+    const newItem = {
+      ...item,
+      id: Date.now().toString(),
+      date: new Date().toISOString(),
+      recurringId: null,
+      repeatMode: "none",
+    };
+    const updated = [newItem, ...txs].sort(
+      (a, b) => new Date(b.date) - new Date(a.date),
+    );
+    setTransactions(updated);
+    localStorage.setItem("vys_transactions", JSON.stringify(updated));
+  };
 
   const handleDeleteOption = (option) => {
     if (!itemToDelete) return;
@@ -486,51 +542,73 @@ export default function History() {
                 <div
                   className={`w-full rounded-2xl overflow-hidden ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-white"}`}
                 >
-                  {group.items.map((tItem, index) => (
-                    <SwipeableItem
-                      key={tItem.id}
-                      onEdit={() => openEdit(tItem)}
-                      onDelete={() => setItemToDelete(tItem)}
-                      isLast={index === group.items.length - 1}
-                      theme={theme}
-                      txType={tItem.type}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-[42px] h-[42px] rounded-full flex items-center justify-center text-[22px] ${theme === "dark" ? "bg-black/50" : "bg-gray-100"}`}
-                          >
-                            {tItem.category?.icon || "💰"}
+                  {group.items.map((tItem, index) => {
+                    const isNoteRedundant =
+                      !tItem.note ||
+                      tItem.note.trim() === "" ||
+                      tItem.note === tItem.category?.name ||
+                      tItem.note === "Expense" ||
+                      tItem.note === "Income";
+
+                    return (
+                      <SwipeableItem
+                        key={tItem.id}
+                        onEdit={() => openEdit(tItem)}
+                        onDelete={() => setItemToDelete(tItem)}
+                        onDuplicate={() => handleDuplicate(tItem)}
+                        isLast={index === group.items.length - 1}
+                        theme={theme}
+                        txType={tItem.type}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-3 overflow-hidden pr-2">
+                            <div
+                              className={`w-[42px] h-[42px] flex-shrink-0 rounded-full flex items-center justify-center text-[22px] ${theme === "dark" ? "bg-black/50" : "bg-gray-100"}`}
+                            >
+                              {tItem.category?.icon || "💰"}
+                            </div>
+
+                            {/* Dọn dẹp chữ: Căn giữa tự động nếu không có Note */}
+                            <div className="flex flex-col justify-center min-h-[42px] overflow-hidden">
+                              <p className="font-bold text-[16px] leading-tight truncate">
+                                {tItem.category?.name ||
+                                  tItem.note ||
+                                  "Transaction"}
+                              </p>
+                              {!isNoteRedundant && (
+                                <p className="text-[13px] text-[#8e8e93] mt-0.5 leading-tight truncate">
+                                  {tItem.note}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex flex-col">
-                            <p className="font-bold text-[16px] leading-tight">
-                              {tItem.category?.name || tItem.note}
-                            </p>
-                            <p className="text-[13px] text-[#8e8e93] mt-0.5 leading-tight">
-                              {tItem.note}
-                            </p>
+
+                          <div className="text-right flex flex-col items-end flex-shrink-0">
+                            <div className="font-bold text-[16px] leading-tight">
+                              ₫{tItem.amount.toLocaleString("vi-VN")}
+                            </div>
+
+                            {/* Bổ sung icon Lặp lại (Repeat) nếu là giao dịch định kỳ */}
+                            <div className="text-[12px] text-[#8e8e93] mt-0.5 leading-tight uppercase font-medium flex items-center justify-end gap-1">
+                              {tItem.recurringId && (
+                                <Repeat size={12} className="text-[#32ade6]" />
+                              )}
+                              {tItem.date
+                                ? new Date(tItem.date).toLocaleTimeString(
+                                    "en-US",
+                                    {
+                                      hour: "numeric",
+                                      minute: "2-digit",
+                                      hour12: true,
+                                    },
+                                  )
+                                : ""}
+                            </div>
                           </div>
                         </div>
-                        <div className="text-right flex flex-col items-end">
-                          <div className="font-bold text-[16px] leading-tight">
-                            ₫{tItem.amount.toLocaleString("vi-VN")}
-                          </div>
-                          <div className="text-[12px] text-[#8e8e93] mt-0.5 leading-tight uppercase font-medium">
-                            {tItem.date
-                              ? new Date(tItem.date).toLocaleTimeString(
-                                  "en-US",
-                                  {
-                                    hour: "numeric",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  },
-                                )
-                              : ""}
-                          </div>
-                        </div>
-                      </div>
-                    </SwipeableItem>
-                  ))}
+                      </SwipeableItem>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -543,10 +621,10 @@ export default function History() {
         </div>
       </div>
 
-      {/* MODAL XÓA - Nâng z-index lên 80 */}
+      {/* MODAL XÓA - Nâng z-index lên 100, Full Tiếng Anh */}
       {itemToDelete && (
         <div
-          className="fixed inset-0 bg-black/70 z-[80] flex items-center justify-center p-4 animate-ios-fade"
+          className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 animate-ios-fade"
           onClick={() => setItemToDelete(null)}
         >
           <div
@@ -588,13 +666,13 @@ export default function History() {
                     onClick={() => handleDeleteOption("only_this")}
                     className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#ff453a]" : "bg-gray-100 text-[#ff453a]"}`}
                   >
-                    Delete this only
+                    Delete this transaction only
                   </button>
                   <button
                     onClick={() => handleDeleteOption("this_and_future")}
                     className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#ff453a]" : "bg-gray-100 text-[#ff453a]"}`}
                   >
-                    Delete this and future
+                    Delete this and future transactions
                   </button>
                   <button
                     onClick={() => setItemToDelete(null)}
@@ -609,10 +687,10 @@ export default function History() {
         </div>
       )}
 
-      {/* MODAL XÁC NHẬN SỬA ĐỊNH KỲ - Nâng z-index lên 90 */}
+      {/* MODAL XÁC NHẬN SỬA ĐỊNH KỲ - Nâng z-index lên 100, Full Tiếng Anh */}
       {editConfirmOption && (
         <div
-          className="fixed inset-0 bg-black/70 z-[90] flex items-center justify-center p-4 animate-ios-fade"
+          className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 animate-ios-fade"
           onClick={() => setEditConfirmOption(false)}
         >
           <div
@@ -630,13 +708,13 @@ export default function History() {
                 onClick={() => executeSave("only_this")}
                 className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#32ade6]" : "bg-gray-100 text-[#007aff]"}`}
               >
-                Edit this only
+                Edit this transaction only
               </button>
               <button
                 onClick={() => executeSave("this_and_future")}
                 className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#32ade6]" : "bg-gray-100 text-[#007aff]"}`}
               >
-                Edit this and future
+                Edit this and future transactions
               </button>
               <button
                 onClick={() => setEditConfirmOption(false)}
@@ -649,10 +727,10 @@ export default function History() {
         </div>
       )}
 
-      {/* MODAL EDIT - Nâng z-index lên 80 */}
+      {/* MODAL EDIT - Nâng z-index lên 100 */}
       {editingItem && (
         <div
-          className="fixed inset-0 bg-black/70 z-[80] flex flex-col justify-end animate-ios-fade"
+          className="fixed inset-0 bg-black/70 z-[100] flex flex-col justify-end animate-ios-fade"
           onClick={closeEdit}
         >
           <div

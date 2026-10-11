@@ -12,6 +12,7 @@ export default function AddTransaction() {
   const [note, setNote] = useState("");
   const [repeat, setRepeat] = useState("none");
 
+  // Từ điển gợi ý nâng cấp (chứa cả category và type)
   const [pastNotes, setPastNotes] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
 
@@ -40,14 +41,32 @@ export default function AddTransaction() {
   const currentCategories = safeCategories.filter((c) => c.type === type);
   const [category, setCategory] = useState(currentCategories[0] || {});
 
+  // Quét lịch sử tạo "Từ điển thông minh"
   useEffect(() => {
     const txs = JSON.parse(localStorage.getItem("vys_transactions") || "[]");
-    const allNotes = txs
-      .map((t) => t.note)
-      .filter((n) => n && n.trim() !== "" && n !== "Expense" && n !== "Income");
+    const noteMap = new Map();
 
-    const uniqueNotes = [...new Set(allNotes)];
-    setPastNotes(uniqueNotes);
+    // Đảo ngược mảng để lấy category mới nhất người dùng hay dùng cho note đó
+    [...txs].reverse().forEach((t) => {
+      if (
+        t.note &&
+        t.note.trim() !== "" &&
+        t.note !== "Expense" &&
+        t.note !== "Income" &&
+        t.category
+      ) {
+        const key = t.note.toLowerCase().trim();
+        if (!noteMap.has(key)) {
+          noteMap.set(key, {
+            note: t.note,
+            category: t.category,
+            type: t.type,
+          });
+        }
+      }
+    });
+
+    setPastNotes(Array.from(noteMap.values()));
   }, []);
 
   const handleNoteChange = (e) => {
@@ -57,8 +76,8 @@ export default function AddTransaction() {
     if (val.trim()) {
       const matches = pastNotes.filter(
         (n) =>
-          n.toLowerCase().includes(val.toLowerCase()) &&
-          n.toLowerCase() !== val.toLowerCase(),
+          n.note.toLowerCase().includes(val.toLowerCase()) &&
+          n.note.toLowerCase() !== val.toLowerCase(),
       );
       setSuggestions(matches.slice(0, 3));
     } else {
@@ -66,8 +85,11 @@ export default function AddTransaction() {
     }
   };
 
-  const acceptSuggestion = (s) => {
-    setNote(s);
+  // Chọn gợi ý -> Tự động điền Note, chuyển Type và chọn đúng Category
+  const acceptSuggestion = (sObj) => {
+    setNote(sObj.note);
+    if (sObj.type) setType(sObj.type);
+    if (sObj.category) setCategory(sObj.category);
     setSuggestions([]);
   };
 
@@ -172,6 +194,7 @@ export default function AddTransaction() {
       categoryListRef.current.scrollLeft = 0;
     }
     setCategory(currentCategories[0] || {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, categories]);
 
   const handleKeyPress = (val) => {
@@ -198,11 +221,10 @@ export default function AddTransaction() {
       const baseDate = new Date(`${datePart}T${timePart}`);
 
       let count = 1;
-      // TĂNG GIỚI HẠN VÒNG LẶP CHO THOẢI MÁI
-      if (repeat === "daily") count = 365; // 1 năm
-      if (repeat === "weekly") count = 104; // 2 năm
-      if (repeat === "monthly") count = 60; // 5 năm
-      if (repeat === "yearly") count = 10; // 10 năm
+      if (repeat === "daily") count = 365;
+      if (repeat === "weekly") count = 104;
+      if (repeat === "monthly") count = 60;
+      if (repeat === "yearly") count = 10;
 
       const newTransactions = [];
       const groupId = "rep_" + Date.now();
@@ -228,7 +250,7 @@ export default function AddTransaction() {
           category: category,
           date: d.toISOString(),
           recurringId: repeat !== "none" ? groupId : null,
-          repeatMode: repeat !== "none" ? repeat : null, // LƯU LOẠI LẶP LẠI
+          repeatMode: repeat !== "none" ? repeat : null,
         });
       }
 
@@ -365,6 +387,7 @@ export default function AddTransaction() {
             className={`mt-2 bg-transparent text-center focus:outline-none w-3/4 py-1.5 ${theme === "dark" ? "text-[#8e8e93] placeholder:text-[#8e8e93]/50" : "text-gray-600 placeholder:text-gray-400"}`}
           />
 
+          {/* HIỂN THỊ GỢI Ý CÓ KÈM ICON CATEGORY */}
           {suggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-2 flex justify-center flex-wrap gap-2 px-2 z-50">
               {suggestions.map((s, idx) => (
@@ -380,9 +403,9 @@ export default function AddTransaction() {
                     e.stopPropagation();
                     acceptSuggestion(s);
                   }}
-                  className={`px-3 py-1.5 rounded-full text-[13px] font-medium truncate max-w-[150px] shadow-sm active:scale-95 transition-transform ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black border border-gray-200"}`}
+                  className={`px-3 py-1.5 rounded-full text-[13px] font-medium truncate max-w-[150px] shadow-sm active:scale-95 transition-transform flex items-center gap-1.5 ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black border border-gray-200"}`}
                 >
-                  {s}
+                  <span>{s.category?.icon}</span> {s.note}
                 </button>
               ))}
             </div>
