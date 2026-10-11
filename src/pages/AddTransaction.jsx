@@ -44,7 +44,6 @@ export default function AddTransaction() {
     const txs = JSON.parse(localStorage.getItem("vys_transactions") || "[]");
     const noteFreq = new Map();
 
-    // Đếm tần suất sử dụng của các Note
     txs.forEach((t) => {
       if (
         t.note &&
@@ -67,15 +66,18 @@ export default function AddTransaction() {
       }
     });
 
-    // Sắp xếp Note theo số lần dùng nhiều nhất
     const sortedNotes = Array.from(noteFreq.values()).sort(
       (a, b) => b.count - a.count,
     );
     setPastNotes(sortedNotes);
-
-    // Mặc định hiện 3 Note hay dùng nhất khi chưa gõ gì
-    setSuggestions(sortedNotes.slice(0, 3));
   }, []);
+
+  // Ràng buộc: Khi note rỗng, luôn hiển thị top 3 gợi ý
+  useEffect(() => {
+    if (!note.trim()) {
+      setSuggestions(pastNotes.slice(0, 3));
+    }
+  }, [note, pastNotes]);
 
   const handleNoteChange = (e) => {
     const val = e.target.value;
@@ -89,7 +91,6 @@ export default function AddTransaction() {
       );
       setSuggestions(matches.slice(0, 3));
     } else {
-      // Khi xóa hết chữ thì quay lại hiện top 3
       setSuggestions(pastNotes.slice(0, 3));
     }
   };
@@ -98,7 +99,6 @@ export default function AddTransaction() {
     setNote(sObj.note);
     if (sObj.type) setType(sObj.type);
     if (sObj.category) setCategory(sObj.category);
-    // Sau khi chọn vẫn giữ gợi ý top để người dùng có thể đổi ý
     setSuggestions(pastNotes.slice(0, 3));
   };
 
@@ -396,9 +396,9 @@ export default function AddTransaction() {
             className={`mt-2 bg-transparent text-center focus:outline-none w-3/4 py-1.5 ${theme === "dark" ? "text-[#8e8e93] placeholder:text-[#8e8e93]/50" : "text-gray-600 placeholder:text-gray-400"}`}
           />
 
-          {/* SỬA HIỂN THỊ GỢI Ý THÀNH HÀNG NGANG (SCROLL NGANG) */}
+          {/* SỬA GỢI Ý THÀNH HÀNG NGANG TRÀN LỀ NHƯ BAR CATEGORY */}
           {suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 flex overflow-x-auto flex-nowrap gap-2 px-1 py-1 z-50 scrollbar-hide justify-center">
+            <div className="absolute top-full -left-5 -right-5 mt-2 flex overflow-x-auto flex-nowrap gap-2.5 px-5 py-1 z-50 scrollbar-hide">
               {suggestions.map((s, idx) => (
                 <button
                   key={idx}

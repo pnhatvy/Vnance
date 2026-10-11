@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import {
   Trash2,
   Calendar,
@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Repeat,
-  Copy,
 } from "lucide-react";
 import { useAppContext } from "../AppContext";
 
@@ -14,7 +13,6 @@ const SwipeableItem = ({
   children,
   onEdit,
   onDelete,
-  onDuplicate,
   isLast,
   theme,
   txType,
@@ -25,36 +23,19 @@ const SwipeableItem = ({
   const [isSwiping, setIsSwiping] = useState(false);
   const [isVerticalScroll, setIsVerticalScroll] = useState(false);
 
-  const pressTimer = useRef(null);
-  const [showDuplicate, setShowDuplicate] = useState(false);
-
   const handleTouchStart = (e) => {
     setStartX(e.touches[0].clientX);
     setStartY(e.touches[0].clientY);
     setIsSwiping(true);
     setIsVerticalScroll(false);
-    setShowDuplicate(false);
-
-    // Bắt đầu đếm thời gian cho thao tác nhấn giữ (0.4s)
-    pressTimer.current = setTimeout(() => {
-      if ("vibrate" in navigator) navigator.vibrate(50);
-      setShowDuplicate(true);
-    }, 400);
   };
 
   const handleTouchMove = (e) => {
+    if (!isSwiping) return;
     const currentX = e.touches[0].clientX;
     const currentY = e.touches[0].clientY;
     const diffX = currentX - startX;
     const diffY = currentY - startY;
-
-    // Khoảng dung sai 10px để tránh ngón tay nhúc nhích nhẹ trên màn hình làm hủy nhấn giữ
-    if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
-      if (pressTimer.current) clearTimeout(pressTimer.current);
-      setShowDuplicate(false);
-    }
-
-    if (!isSwiping) return;
 
     if (!isVerticalScroll) {
       if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 5) {
@@ -71,7 +52,6 @@ const SwipeableItem = ({
   };
 
   const handleTouchEnd = () => {
-    if (pressTimer.current) clearTimeout(pressTimer.current);
     setIsSwiping(false);
 
     if (isVerticalScroll) {
@@ -113,30 +93,6 @@ const SwipeableItem = ({
         className={`relative w-full transition-transform duration-200 ease-out flex items-center py-3.5 px-4 pl-5 ${theme === "dark" ? "bg-black" : "bg-[#f2f2f7]"} ${!isLast ? (theme === "dark" ? "border-b border-[#1c1c1e]" : "border-b border-gray-200") : ""}`}
         style={{ transform: `translateX(${offsetX}px)` }}
       >
-        {/* OVERLAY TÍNH NĂNG NHÂN BẢN KHI NHẤN GIỮ */}
-        {showDuplicate && (
-          <div
-            className="absolute inset-0 z-[60] flex items-center justify-center bg-black/20 backdrop-blur-[2px] animate-ios-fade"
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              setShowDuplicate(false);
-            }}
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                setShowDuplicate(false);
-                if (onDuplicate) onDuplicate();
-              }}
-              className="bg-[#32ade6] text-white px-5 py-2.5 rounded-full font-bold text-[13px] shadow-lg flex items-center gap-2 active:scale-95 transition-transform"
-            >
-              <Copy size={16} /> Duplicate for today
-            </button>
-          </div>
-        )}
-
         <div
           className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-md opacity-70"
           style={{ backgroundColor: indicatorColor }}
@@ -245,27 +201,6 @@ export default function History() {
   const sortedGroups = Object.values(groupedData).sort(
     (a, b) => b.date - a.date,
   );
-
-  const handleDuplicate = (item) => {
-    const txs = JSON.parse(localStorage.getItem("vys_transactions") || "[]");
-
-    // Lấy thời gian hiện tại
-    const now = new Date();
-
-    const newItem = {
-      ...item,
-      id: Date.now().toString(),
-      date: now.toISOString(), // Gán ngày hôm nay
-      recurringId: null,
-      repeatMode: "none",
-    };
-
-    const updated = [newItem, ...txs].sort(
-      (a, b) => new Date(b.date) - new Date(a.date),
-    );
-    setTransactions(updated);
-    localStorage.setItem("vys_transactions", JSON.stringify(updated));
-  };
 
   const handleDeleteOption = (option) => {
     if (!itemToDelete) return;
@@ -566,7 +501,6 @@ export default function History() {
                         key={tItem.id}
                         onEdit={() => openEdit(tItem)}
                         onDelete={() => setItemToDelete(tItem)}
-                        onDuplicate={() => handleDuplicate(tItem)}
                         isLast={index === group.items.length - 1}
                         theme={theme}
                         txType={tItem.type}
@@ -598,7 +532,6 @@ export default function History() {
                               ₫{tItem.amount.toLocaleString("vi-VN")}
                             </div>
 
-                            {/* HIỂN THỊ ICON REPEAT NẾU LÀ GIAO DỊCH ĐỊNH KỲ */}
                             <div className="text-[12px] text-[#8e8e93] mt-0.5 leading-tight uppercase font-medium flex items-center justify-end gap-1">
                               {(tItem.recurringId ||
                                 (tItem.repeatMode &&
