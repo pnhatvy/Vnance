@@ -588,13 +588,13 @@ export default function History() {
                     onClick={() => handleDeleteOption("only_this")}
                     className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#ff453a]" : "bg-gray-100 text-[#ff453a]"}`}
                   >
-                    Delete this transaction only
+                    Delete this only
                   </button>
                   <button
                     onClick={() => handleDeleteOption("this_and_future")}
                     className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#ff453a]" : "bg-gray-100 text-[#ff453a]"}`}
                   >
-                    Delete this and future transactions
+                    Delete this and future
                   </button>
                   <button
                     onClick={() => setItemToDelete(null)}
@@ -630,13 +630,13 @@ export default function History() {
                 onClick={() => executeSave("only_this")}
                 className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#32ade6]" : "bg-gray-100 text-[#007aff]"}`}
               >
-                Edit this transaction only
+                Edit this only
               </button>
               <button
                 onClick={() => executeSave("this_and_future")}
                 className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#32ade6]" : "bg-gray-100 text-[#007aff]"}`}
               >
-                Edit this and future transactions
+                Edit this and future
               </button>
               <button
                 onClick={() => setEditConfirmOption(false)}
