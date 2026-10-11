@@ -179,7 +179,10 @@ export default function AddTransaction() {
   }, [type, categories]);
 
   const handleKeyPress = (val) => {
-    if (val === ",") {
+    if (val === "000") {
+      if (amount === "0") return; // Bỏ qua nếu giá trị đang là 0
+      if (amount.length <= 9) setAmount(amount + val); // Giới hạn độ dài để không tràn chữ
+    } else if (val === ",") {
       if (!amount.includes(",")) setAmount(amount + ",");
     } else {
       if (amount === "0") setAmount(val);
@@ -467,11 +470,11 @@ export default function AddTransaction() {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            handleKeyPress(",");
+            handleKeyPress("000"); // Đã thay đổi phím , thành phím 000
           }}
           className={`py-3 rounded-2xl text-2xl font-semibold active:opacity-60 ${theme === "dark" ? "bg-[#1c1c1e] text-white" : "bg-white text-black shadow-sm"}`}
         >
-          ,
+          000
         </button>
         <button
           onClick={(e) => {
