@@ -45,7 +45,6 @@ export default function AddTransaction() {
     const noteFreq = new Map();
 
     txs.forEach((t) => {
-      // LOẠI BỎ CÁC NOTE TRÙNG TÊN CATEGORY (VD: Food, Shopping,...)
       if (
         t.note &&
         t.note.trim() !== "" &&
@@ -375,12 +374,13 @@ export default function AddTransaction() {
           <span>{displayAmount()}</span>
         </div>
 
-        <div className="h-6 mt-1 flex items-center justify-center">
+        {/* Bóp chiều cao khối này để kéo ô Note lên gần số tiền hơn */}
+        <div className="h-5 flex items-center justify-center mb-1">
           {calculatedHours() && (
             <span
-              className={`text-[13px] font-medium flex items-center gap-1.5 animate-ios-fade ${type === "expense" ? "text-[#ff453a]/80" : "text-[#32d74b]/80"}`}
+              className={`text-[12px] font-medium flex items-center gap-1.5 animate-ios-fade ${type === "expense" ? "text-[#ff453a]/80" : "text-[#32d74b]/80"}`}
             >
-              <Timer size={14} />
+              <Timer size={13} />
               {type === "expense" ? "Costs" : "Equals"} {calculatedHours()}{" "}
               {calculatedHours() === "1.0" ? "hour" : "hours"} of work
             </span>
@@ -388,23 +388,22 @@ export default function AddTransaction() {
         </div>
 
         <div className="relative w-full flex flex-col items-center">
+          {/* Bỏ margin-top dư thừa để input sát lên trên */}
           <input
             type="text"
             placeholder="+ Add note..."
             value={note}
             onChange={handleNoteChange}
             onTouchStart={(e) => e.stopPropagation()}
-            className={`mt-2 bg-transparent text-center focus:outline-none w-3/4 py-1.5 ${theme === "dark" ? "text-[#8e8e93] placeholder:text-[#8e8e93]/50" : "text-gray-600 placeholder:text-gray-400"}`}
+            className={`bg-transparent text-center focus:outline-none w-3/4 py-1 ${theme === "dark" ? "text-[#8e8e93] placeholder:text-[#8e8e93]/50" : "text-gray-600 placeholder:text-gray-400"}`}
           />
 
-          {/* CĂN GIỮA NẾU NGẮN, VUỐT ĐƯỢC NẾU DÀI, CẮT CHỮ BẰNG DẤU BA CHẤM KHI NOTE DÀI */}
           {suggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-2 flex overflow-x-auto scrollbar-hide px-5 py-1 z-50">
               <div className="flex gap-2.5 mx-auto w-max">
                 {suggestions.map((s, idx) => (
                   <button
                     key={idx}
-                    // BỎ ONTOUCHSTART ĐỂ THOẢI MÁI VUỐT NGANG MÀ KHÔNG SỢ BỊ CHỌN NHẦM
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
