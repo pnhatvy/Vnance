@@ -12,11 +12,11 @@ export default function AddTransaction() {
   const [note, setNote] = useState("");
   const [repeat, setRepeat] = useState("none");
 
-  // STATE MỚI CHO TÍNH NĂNG GỢI Ý
   const [pastNotes, setPastNotes] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
 
   const containerRef = useRef(null);
+  const categoryListRef = useRef(null); // Ref để reset cuộn
 
   const getCurrentDate = () => {
     const now = new Date();
@@ -40,44 +40,37 @@ export default function AddTransaction() {
   const currentCategories = safeCategories.filter((c) => c.type === type);
   const [category, setCategory] = useState(currentCategories[0] || {});
 
-  // 1. Quét lịch sử giao dịch để tạo "Từ điển" gợi ý
   useEffect(() => {
     const txs = JSON.parse(localStorage.getItem("vys_transactions") || "[]");
     const allNotes = txs
       .map((t) => t.note)
       .filter((n) => n && n.trim() !== "" && n !== "Expense" && n !== "Income");
 
-    // Lọc trùng lặp để mảng gợi ý luôn sạch sẽ
     const uniqueNotes = [...new Set(allNotes)];
     setPastNotes(uniqueNotes);
   }, []);
 
-  // 2. Logic xử lý khi ông gõ chữ vào ô Note
   const handleNoteChange = (e) => {
     const val = e.target.value;
     setNote(val);
 
     if (val.trim()) {
-      // Tìm các note cũ có chứa từ đang gõ (không phân biệt hoa thường)
       const matches = pastNotes.filter(
         (n) =>
           n.toLowerCase().includes(val.toLowerCase()) &&
           n.toLowerCase() !== val.toLowerCase(),
       );
-      // Chỉ hiện tối đa 3 gợi ý gần nhất cho gọn màn hình
       setSuggestions(matches.slice(0, 3));
     } else {
       setSuggestions([]);
     }
   };
 
-  // 3. Logic chọn gợi ý
   const acceptSuggestion = (s) => {
     setNote(s);
     setSuggestions([]);
   };
 
-  // Khôi phục hiệu ứng trượt vuốt đóng trang
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -174,14 +167,18 @@ export default function AddTransaction() {
     setTimeout(() => navigate("/"), 300);
   };
 
+  // RESET CUỘN VỀ 0 KHI ĐỔI LOẠI
   useEffect(() => {
+    if (categoryListRef.current) {
+      categoryListRef.current.scrollLeft = 0;
+    }
     setCategory(currentCategories[0] || {});
   }, [type, categories]);
 
   const handleKeyPress = (val) => {
     if (val === "000") {
-      if (amount === "0") return; // Bỏ qua nếu giá trị đang là 0
-      if (amount.length <= 9) setAmount(amount + val); // Giới hạn độ dài để không tràn chữ
+      if (amount === "0") return;
+      if (amount.length <= 9) setAmount(amount + val);
     } else if (val === ",") {
       if (!amount.includes(",")) setAmount(amount + ",");
     } else {
@@ -301,7 +298,10 @@ export default function AddTransaction() {
         <div className="w-[42px] flex-shrink-0"></div>
       </div>
 
-      <div className="flex overflow-x-auto flex-nowrap gap-2.5 py-1 mb-3 scrollbar-hide items-center min-h-[50px] flex-shrink-0">
+      <div
+        ref={categoryListRef}
+        className="flex overflow-x-auto flex-nowrap gap-2.5 py-1 mb-3 scrollbar-hide items-center min-h-[50px] flex-shrink-0"
+      >
         {currentCategories.map((cat) => (
           <button
             key={cat.id}
@@ -354,7 +354,6 @@ export default function AddTransaction() {
           )}
         </div>
 
-        {/* CONTAINER CỦA Ô NHẬP VÀ DANH SÁCH GỢI Ý */}
         <div className="relative w-full flex flex-col items-center">
           <input
             type="text"
@@ -365,13 +364,11 @@ export default function AddTransaction() {
             className={`mt-2 bg-transparent text-center focus:outline-none w-3/4 py-1.5 ${theme === "dark" ? "text-[#8e8e93] placeholder:text-[#8e8e93]/50" : "text-gray-600 placeholder:text-gray-400"}`}
           />
 
-          {/* HIỂN THỊ GỢI Ý (AUTOCOMPLETE PILLS) */}
           {suggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-2 flex justify-center flex-wrap gap-2 px-2 z-50">
               {suggestions.map((s, idx) => (
                 <button
                   key={idx}
-                  // Dùng onTouchStart kết hợp preventDefault để ấn vào gợi ý mà không bị mất focus bàn phím
                   onTouchStart={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -470,7 +467,7 @@ export default function AddTransaction() {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            handleKeyPress("000"); // Đã thay đổi phím , thành phím 000
+            handleKeyPress("000");
           }}
           className={`py-3 rounded-2xl text-2xl font-semibold active:opacity-60 ${theme === "dark" ? "bg-[#1c1c1e] text-white" : "bg-white text-black shadow-sm"}`}
         >

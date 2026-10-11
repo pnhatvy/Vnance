@@ -106,6 +106,8 @@ export default function History() {
   const [timeFilter, setTimeFilter] = useState("month");
   const { categories, setIsModalOpen, cycleStartDay, theme } = useAppContext();
   const [editingItem, setEditingItem] = useState(null);
+
+  // Lưu TRỌN BỘ object giao dịch để lấy được recurringId
   const [itemToDelete, setItemToDelete] = useState(null);
   const [offset, setOffset] = useState(0);
 
@@ -197,21 +199,42 @@ export default function History() {
     (a, b) => b.date - a.date,
   );
 
-  const confirmDelete = () => {
-    if (itemToDelete) {
-      const newData = transactions.filter((t) => t.id !== itemToDelete);
-      setTransactions(newData);
-      localStorage.setItem("vys_transactions", JSON.stringify(newData));
-      setItemToDelete(null);
+  // LOGIC XỬ LÝ XÓA LẶP LẠI (REPEAT)
+  const handleDeleteOption = (option) => {
+    if (!itemToDelete) return;
+
+    let newData = [...transactions];
+    if (option === "only_this") {
+      newData = newData.filter((t) => t.id !== itemToDelete.id);
+    } else if (option === "this_and_future") {
+      newData = newData.filter((t) => {
+        if (t.recurringId === itemToDelete.recurringId) {
+          return new Date(t.date) < new Date(itemToDelete.date);
+        }
+        return true;
+      });
+    } else if (option === "all") {
+      newData = newData.filter(
+        (t) => t.recurringId !== itemToDelete.recurringId,
+      );
     }
+
+    setTransactions(newData);
+    localStorage.setItem("vys_transactions", JSON.stringify(newData));
+    setItemToDelete(null);
   };
 
   const openEdit = (item) => {
     const d = item.date ? new Date(item.date) : new Date();
+    // BÙ TRỪ MÚI GIỜ ĐỂ KHÔNG BỊ TRỪ LÙI NGÀY KHI SỬ DỤNG toISOString()
+    const localISODate = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString()
+      .split("T")[0];
+
     setEditingItem({
       ...item,
       amount: item.amount ? item.amount.toString().replace(".", ",") : "0",
-      editDate: d.toISOString().split("T")[0],
+      editDate: localISODate,
       editTime: d.toTimeString().slice(0, 5),
       type: item.type || "expense",
       repeat: "none",
@@ -367,7 +390,6 @@ export default function History() {
                 <ChevronLeft size={20} />
               </button>
 
-              {/* NATIVE PICKER: Bọc thẻ Input tàng hình đè lên chữ */}
               <div className="relative flex-1 mx-2 flex items-center justify-center">
                 <span className="text-[13px] font-bold tracking-wide pointer-events-none text-center">
                   {bounds.label}
@@ -395,7 +417,7 @@ export default function History() {
                           : dayDiff,
                       );
                     }
-                    e.target.value = ""; // Reset để có thể chọn lại đúng ngày đó lần sau
+                    e.target.value = "";
                   }}
                 />
               </div>
@@ -432,7 +454,7 @@ export default function History() {
                     <SwipeableItem
                       key={tItem.id}
                       onEdit={() => openEdit(tItem)}
-                      onDelete={() => setItemToDelete(tItem.id)}
+                      onDelete={() => setItemToDelete(tItem)} // LƯU TRỌN BỘ OBJECT
                       isLast={index === group.items.length - 1}
                       theme={theme}
                       txType={tItem.type}
@@ -495,25 +517,63 @@ export default function History() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-bold text-center text-lg mb-2">
-              Delete Transaction?
+              Xóa giao dịch?
             </h3>
-            <p className="text-[#8e8e93] text-center text-sm mb-6">
-              You cannot undo this action.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setItemToDelete(null)}
-                className={`flex-1 py-2.5 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#3a3a3c] text-white" : "bg-gray-200 text-black"}`}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="flex-1 bg-[#ff453a] text-white py-2.5 rounded-xl font-semibold active:opacity-70"
-              >
-                Delete
-              </button>
-            </div>
+
+            {/* KIỂM TRA XEM CÓ PHẢI GIAO DỊCH ĐỊNH KỲ KHÔNG ĐỂ HIỂN THỊ MENU XÓA */}
+            {!itemToDelete.recurringId ? (
+              <>
+                <p className="text-[#8e8e93] text-center text-sm mb-6">
+                  Bạn không thể hoàn tác hành động này.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setItemToDelete(null)}
+                    className={`flex-1 py-2.5 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#3a3a3c] text-white" : "bg-gray-200 text-black"}`}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={() => handleDeleteOption("only_this")}
+                    className="flex-1 bg-[#ff453a] text-white py-2.5 rounded-xl font-semibold active:opacity-70"
+                  >
+                    Xóa
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-[#8e8e93] text-center text-[13px] mb-5">
+                  Đây là giao dịch định kỳ. Bạn muốn xóa phần nào?
+                </p>
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => handleDeleteOption("only_this")}
+                    className="w-full bg-[#ff453a] text-white py-3 rounded-xl font-semibold active:opacity-70"
+                  >
+                    Xóa giao dịch này
+                  </button>
+                  <button
+                    onClick={() => handleDeleteOption("this_and_future")}
+                    className="w-full bg-[#ff453a] text-white py-3 rounded-xl font-semibold active:opacity-70"
+                  >
+                    Xóa mục này và tương lai
+                  </button>
+                  <button
+                    onClick={() => handleDeleteOption("all")}
+                    className="w-full bg-[#ff453a] text-white py-3 rounded-xl font-semibold active:opacity-70"
+                  >
+                    Xóa tất cả chuỗi
+                  </button>
+                  <button
+                    onClick={() => setItemToDelete(null)}
+                    className={`w-full py-3 rounded-xl font-semibold active:opacity-70 mt-1 ${theme === "dark" ? "bg-[#3a3a3c] text-white" : "bg-gray-200 text-black"}`}
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
