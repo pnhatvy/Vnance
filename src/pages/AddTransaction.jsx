@@ -45,12 +45,14 @@ export default function AddTransaction() {
     const noteFreq = new Map();
 
     txs.forEach((t) => {
+      // LOẠI BỎ CÁC NOTE TRÙNG TÊN CATEGORY (VD: Food, Shopping,...)
       if (
         t.note &&
         t.note.trim() !== "" &&
         t.note !== "Expense" &&
         t.note !== "Income" &&
-        t.category
+        t.category &&
+        t.note !== t.category.name
       ) {
         const key = t.note.toLowerCase().trim();
         if (!noteFreq.has(key)) {
@@ -72,7 +74,6 @@ export default function AddTransaction() {
     setPastNotes(sortedNotes);
   }, []);
 
-  // Ràng buộc: Khi note rỗng, luôn hiển thị top 3 gợi ý
   useEffect(() => {
     if (!note.trim()) {
       setSuggestions(pastNotes.slice(0, 3));
@@ -396,27 +397,26 @@ export default function AddTransaction() {
             className={`mt-2 bg-transparent text-center focus:outline-none w-3/4 py-1.5 ${theme === "dark" ? "text-[#8e8e93] placeholder:text-[#8e8e93]/50" : "text-gray-600 placeholder:text-gray-400"}`}
           />
 
-          {/* SỬA GỢI Ý THÀNH HÀNG NGANG TRÀN LỀ NHƯ BAR CATEGORY */}
+          {/* CĂN GIỮA NẾU NGẮN, VUỐT ĐƯỢC NẾU DÀI, CẮT CHỮ BẰNG DẤU BA CHẤM KHI NOTE DÀI */}
           {suggestions.length > 0 && (
-            <div className="absolute top-full -left-5 -right-5 mt-2 flex overflow-x-auto flex-nowrap gap-2.5 px-5 py-1 z-50 scrollbar-hide">
-              {suggestions.map((s, idx) => (
-                <button
-                  key={idx}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    acceptSuggestion(s);
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    acceptSuggestion(s);
-                  }}
-                  className={`px-3.5 py-2 rounded-full text-[13px] font-medium whitespace-nowrap shadow-sm active:scale-95 transition-transform flex items-center gap-1.5 flex-shrink-0 ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black border border-gray-200"}`}
-                >
-                  <span>{s.category?.icon}</span> {s.note}
-                </button>
-              ))}
+            <div className="absolute top-full left-0 right-0 mt-2 flex overflow-x-auto scrollbar-hide px-5 py-1 z-50">
+              <div className="flex gap-2.5 mx-auto w-max">
+                {suggestions.map((s, idx) => (
+                  <button
+                    key={idx}
+                    // BỎ ONTOUCHSTART ĐỂ THOẢI MÁI VUỐT NGANG MÀ KHÔNG SỢ BỊ CHỌN NHẦM
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      acceptSuggestion(s);
+                    }}
+                    className={`px-3.5 py-2 rounded-full text-[13px] font-medium shadow-sm active:scale-95 transition-transform flex items-center gap-1.5 flex-shrink-0 max-w-[160px] ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black border border-gray-200"}`}
+                  >
+                    <span>{s.category?.icon}</span>
+                    <span className="truncate">{s.note}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
