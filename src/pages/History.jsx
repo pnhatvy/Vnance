@@ -105,10 +105,11 @@ export default function History() {
   const [transactions, setTransactions] = useState([]);
   const [timeFilter, setTimeFilter] = useState("month");
   const { categories, setIsModalOpen, cycleStartDay, theme } = useAppContext();
-  const [editingItem, setEditingItem] = useState(null);
 
-  // Lưu TRỌN BỘ object giao dịch để lấy được recurringId
+  const [editingItem, setEditingItem] = useState(null);
+  const [editConfirmOption, setEditConfirmOption] = useState(false); // Modal Confirm Edit
   const [itemToDelete, setItemToDelete] = useState(null);
+
   const [offset, setOffset] = useState(0);
 
   useEffect(() => {
@@ -199,7 +200,6 @@ export default function History() {
     (a, b) => b.date - a.date,
   );
 
-  // LOGIC XỬ LÝ XÓA LẶP LẠI (REPEAT)
   const handleDeleteOption = (option) => {
     if (!itemToDelete) return;
 
@@ -213,10 +213,6 @@ export default function History() {
         }
         return true;
       });
-    } else if (option === "all") {
-      newData = newData.filter(
-        (t) => t.recurringId !== itemToDelete.recurringId,
-      );
     }
 
     setTransactions(newData);
@@ -226,28 +222,39 @@ export default function History() {
 
   const openEdit = (item) => {
     const d = item.date ? new Date(item.date) : new Date();
-    // BÙ TRỪ MÚI GIỜ ĐỂ KHÔNG BỊ TRỪ LÙI NGÀY KHI SỬ DỤNG toISOString()
     const localISODate = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
       .toISOString()
       .split("T")[0];
 
     setEditingItem({
       ...item,
+      originalDate: item.date, // Lưu lại thời gian gốc để so sánh khi sửa "tương lai"
       amount: item.amount ? item.amount.toString().replace(".", ",") : "0",
       editDate: localISODate,
       editTime: d.toTimeString().slice(0, 5),
       type: item.type || "expense",
-      repeat: "none",
+      repeat: item.repeatMode || "none", // Tự động load repeatMode (nếu lúc trước tạo có lưu)
     });
     setIsModalOpen(true);
   };
+
   const closeEdit = () => {
     setEditingItem(null);
     setIsModalOpen(false);
+    setEditConfirmOption(false);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveClick = () => {
     if (!editingItem.amount || editingItem.amount === ",") return;
+    // Bật bảng hỏi nếu đang sửa một giao dịch thuộc chuỗi định kỳ
+    if (editingItem.recurringId) {
+      setEditConfirmOption(true);
+    } else {
+      executeSave("only_this");
+    }
+  };
+
+  const executeSave = (scope) => {
     try {
       const combinedDateTime = new Date(
         `${editingItem.editDate}T${editingItem.editTime}:00`,
@@ -255,45 +262,75 @@ export default function History() {
       const numericAmount = Number(
         editingItem.amount.toString().replace(",", "."),
       );
-
       let updatedList = [...transactions];
-      const index = updatedList.findIndex((t) => t.id === editingItem.id);
 
-      if (index !== -1) {
-        updatedList[index] = {
-          ...updatedList[index],
-          amount: numericAmount,
-          type: editingItem.type,
-          note: editingItem.note,
-          category: editingItem.category,
-          date: combinedDateTime.toISOString(),
-        };
-      }
-
-      if (editingItem.repeat !== "none") {
-        let count = 0;
-        if (editingItem.repeat === "daily") count = 30;
-        if (editingItem.repeat === "weekly") count = 12;
-        if (editingItem.repeat === "monthly") count = 12;
-        if (editingItem.repeat === "yearly") count = 5;
-        const groupId = "rep_" + Date.now();
-        for (let i = 1; i <= count; i++) {
-          const d = new Date(combinedDateTime);
-          if (editingItem.repeat === "daily") d.setDate(d.getDate() + i);
-          if (editingItem.repeat === "weekly") d.setDate(d.getDate() + i * 7);
-          if (editingItem.repeat === "monthly") d.setMonth(d.getMonth() + i);
-          if (editingItem.repeat === "yearly")
-            d.setFullYear(d.getFullYear() + i);
-          updatedList.push({
-            id: Date.now().toString() + "_" + i,
+      if (scope === "only_this") {
+        const index = updatedList.findIndex((t) => t.id === editingItem.id);
+        if (index !== -1) {
+          updatedList[index] = {
+            ...updatedList[index],
             amount: numericAmount,
             type: editingItem.type,
             note: editingItem.note,
             category: editingItem.category,
-            date: d.toISOString(),
-            recurringId: groupId,
-          });
+            date: combinedDateTime.toISOString(),
+          };
         }
+
+        // Logic cũ: nếu giao dịch này HỒI TRƯỚC là "once" mà giờ bấm chuyển sang Lặp (Repeat)
+        if (!editingItem.recurringId && editingItem.repeat !== "none") {
+          let count = 0;
+          if (editingItem.repeat === "daily") count = 365;
+          if (editingItem.repeat === "weekly") count = 104;
+          if (editingItem.repeat === "monthly") count = 60;
+          if (editingItem.repeat === "yearly") count = 10;
+
+          const groupId = "rep_" + Date.now();
+          updatedList[index].recurringId = groupId;
+          updatedList[index].repeatMode = editingItem.repeat;
+
+          for (let i = 1; i <= count; i++) {
+            const d = new Date(combinedDateTime);
+            if (editingItem.repeat === "daily") d.setDate(d.getDate() + i);
+            if (editingItem.repeat === "weekly") d.setDate(d.getDate() + i * 7);
+            if (editingItem.repeat === "monthly") d.setMonth(d.getMonth() + i);
+            if (editingItem.repeat === "yearly")
+              d.setFullYear(d.getFullYear() + i);
+
+            updatedList.push({
+              id: Date.now().toString() + "_" + i,
+              amount: numericAmount,
+              type: editingItem.type,
+              note: editingItem.note,
+              category: editingItem.category,
+              date: d.toISOString(),
+              recurringId: groupId,
+              repeatMode: editingItem.repeat,
+            });
+          }
+        }
+      } else if (scope === "this_and_future") {
+        const origDate = new Date(editingItem.originalDate);
+        updatedList = updatedList.map((t) => {
+          if (
+            t.recurringId === editingItem.recurringId &&
+            new Date(t.date) >= origDate
+          ) {
+            return {
+              ...t,
+              amount: numericAmount,
+              type: editingItem.type,
+              note: editingItem.note,
+              category: editingItem.category,
+              // Chỉ thay đổi giờ/ngày của cái đang sửa, những cái sau giữ nguyên mốc ngày của nó
+              date:
+                t.id === editingItem.id
+                  ? combinedDateTime.toISOString()
+                  : t.date,
+            };
+          }
+          return t;
+        });
       }
 
       updatedList.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -311,6 +348,7 @@ export default function History() {
       category: categories.filter((c) => c.type === newType)[0] || {},
     });
   };
+
   const formatDisplayAmount = (val) => {
     if (!val) return "";
     const parts = val.toString().split(",");
@@ -318,6 +356,7 @@ export default function History() {
       ? `${parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".")},${parts[1]}`
       : parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
+
   const formatGroupHeader = (d) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -454,7 +493,7 @@ export default function History() {
                     <SwipeableItem
                       key={tItem.id}
                       onEdit={() => openEdit(tItem)}
-                      onDelete={() => setItemToDelete(tItem)} // LƯU TRỌN BỘ OBJECT
+                      onDelete={() => setItemToDelete(tItem)}
                       isLast={index === group.items.length - 1}
                       theme={theme}
                       txType={tItem.type}
@@ -507,6 +546,7 @@ export default function History() {
         </div>
       </div>
 
+      {/* MODAL XÓA */}
       {itemToDelete && (
         <div
           className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4 animate-ios-fade"
@@ -520,7 +560,6 @@ export default function History() {
               Xóa giao dịch?
             </h3>
 
-            {/* KIỂM TRA XEM CÓ PHẢI GIAO DỊCH ĐỊNH KỲ KHÔNG ĐỂ HIỂN THỊ MENU XÓA */}
             {!itemToDelete.recurringId ? (
               <>
                 <p className="text-[#8e8e93] text-center text-sm mb-6">
@@ -546,28 +585,23 @@ export default function History() {
                 <p className="text-[#8e8e93] text-center text-[13px] mb-5">
                   Đây là giao dịch định kỳ. Bạn muốn xóa phần nào?
                 </p>
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
+                  {/* STYLE MỚI: Tinh tế theo iOS (Màu nền xám nhẹ, text cảnh báo đỏ) */}
                   <button
                     onClick={() => handleDeleteOption("only_this")}
-                    className="w-full bg-[#ff453a] text-white py-3 rounded-xl font-semibold active:opacity-70"
+                    className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#ff453a]" : "bg-gray-100 text-[#ff453a]"}`}
                   >
-                    Xóa giao dịch này
+                    Chỉ xóa giao dịch này
                   </button>
                   <button
                     onClick={() => handleDeleteOption("this_and_future")}
-                    className="w-full bg-[#ff453a] text-white py-3 rounded-xl font-semibold active:opacity-70"
+                    className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#ff453a]" : "bg-gray-100 text-[#ff453a]"}`}
                   >
-                    Xóa mục này và tương lai
-                  </button>
-                  <button
-                    onClick={() => handleDeleteOption("all")}
-                    className="w-full bg-[#ff453a] text-white py-3 rounded-xl font-semibold active:opacity-70"
-                  >
-                    Xóa tất cả chuỗi
+                    Xóa từ mục này trở đi
                   </button>
                   <button
                     onClick={() => setItemToDelete(null)}
-                    className={`w-full py-3 rounded-xl font-semibold active:opacity-70 mt-1 ${theme === "dark" ? "bg-[#3a3a3c] text-white" : "bg-gray-200 text-black"}`}
+                    className={`w-full py-3 rounded-xl font-semibold active:opacity-70 mt-2 ${theme === "dark" ? "bg-[#3a3a3c] text-white" : "bg-gray-200 text-black"}`}
                   >
                     Hủy
                   </button>
@@ -578,9 +612,50 @@ export default function History() {
         </div>
       )}
 
+      {/* MODAL HỎI SAU KHI BẤM "SAVE" ĐỐI VỚI GIAO DỊCH ĐỊNH KỲ */}
+      {editConfirmOption && (
+        <div
+          className="fixed inset-0 bg-black/70 z-[70] flex items-center justify-center p-4 animate-ios-fade"
+          onClick={() => setEditConfirmOption(false)}
+        >
+          <div
+            className={`w-full max-w-[320px] rounded-[32px] p-6 shadow-2xl animate-ios-slide ${theme === "dark" ? "bg-[#1c1c1e] text-white" : "bg-white text-black"}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-bold text-center text-lg mb-2">
+              Sửa giao dịch định kỳ
+            </h3>
+            <p className="text-[#8e8e93] text-center text-[13px] mb-5">
+              Bạn muốn áp dụng thay đổi này cho những giao dịch nào?
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => executeSave("only_this")}
+                className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#32ade6]" : "bg-gray-100 text-[#007aff]"}`}
+              >
+                Chỉ sửa giao dịch này
+              </button>
+              <button
+                onClick={() => executeSave("this_and_future")}
+                className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#32ade6]" : "bg-gray-100 text-[#007aff]"}`}
+              >
+                Sửa mục này và tương lai
+              </button>
+              <button
+                onClick={() => setEditConfirmOption(false)}
+                className={`w-full py-3 rounded-xl font-semibold active:opacity-70 mt-2 ${theme === "dark" ? "bg-[#3a3a3c] text-white" : "bg-gray-200 text-black"}`}
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDIT */}
       {editingItem && (
         <div
-          className="fixed inset-0 bg-black/70 z-[60] flex flex-col justify-end animate-ios-fade"
+          className="fixed inset-0 bg-black/70 z-[50] flex flex-col justify-end animate-ios-fade"
           onClick={closeEdit}
         >
           <div
@@ -711,7 +786,7 @@ export default function History() {
                 Cancel
               </button>
               <button
-                onClick={handleSaveEdit}
+                onClick={handleSaveClick}
                 className={`flex-1 py-3.5 rounded-2xl font-bold ${theme === "dark" ? "bg-white text-black" : "bg-black text-white"}`}
               >
                 Save

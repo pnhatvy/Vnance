@@ -16,7 +16,7 @@ export default function AddTransaction() {
   const [suggestions, setSuggestions] = useState([]);
 
   const containerRef = useRef(null);
-  const categoryListRef = useRef(null); // Ref để reset cuộn
+  const categoryListRef = useRef(null);
 
   const getCurrentDate = () => {
     const now = new Date();
@@ -167,7 +167,6 @@ export default function AddTransaction() {
     setTimeout(() => navigate("/"), 300);
   };
 
-  // RESET CUỘN VỀ 0 KHI ĐỔI LOẠI
   useEffect(() => {
     if (categoryListRef.current) {
       categoryListRef.current.scrollLeft = 0;
@@ -199,10 +198,11 @@ export default function AddTransaction() {
       const baseDate = new Date(`${datePart}T${timePart}`);
 
       let count = 1;
-      if (repeat === "daily") count = 30;
-      if (repeat === "weekly") count = 12;
-      if (repeat === "monthly") count = 12;
-      if (repeat === "yearly") count = 5;
+      // TĂNG GIỚI HẠN VÒNG LẶP CHO THOẢI MÁI
+      if (repeat === "daily") count = 365; // 1 năm
+      if (repeat === "weekly") count = 104; // 2 năm
+      if (repeat === "monthly") count = 60; // 5 năm
+      if (repeat === "yearly") count = 10; // 10 năm
 
       const newTransactions = [];
       const groupId = "rep_" + Date.now();
@@ -228,6 +228,7 @@ export default function AddTransaction() {
           category: category,
           date: d.toISOString(),
           recurringId: repeat !== "none" ? groupId : null,
+          repeatMode: repeat !== "none" ? repeat : null, // LƯU LOẠI LẶP LẠI
         });
       }
 
