@@ -35,7 +35,7 @@ const SwipeableItem = ({
     setIsVerticalScroll(false);
     setShowDuplicate(false);
 
-    // Kích hoạt nhấn giữ (Long press) sau 0.4s
+    // Bắt đầu đếm thời gian cho thao tác nhấn giữ (0.4s)
     pressTimer.current = setTimeout(() => {
       if ("vibrate" in navigator) navigator.vibrate(50);
       setShowDuplicate(true);
@@ -43,14 +43,18 @@ const SwipeableItem = ({
   };
 
   const handleTouchMove = (e) => {
-    if (pressTimer.current) clearTimeout(pressTimer.current);
-    setShowDuplicate(false);
-
-    if (!isSwiping) return;
     const currentX = e.touches[0].clientX;
     const currentY = e.touches[0].clientY;
     const diffX = currentX - startX;
     const diffY = currentY - startY;
+
+    // Khoảng dung sai 10px để tránh ngón tay nhúc nhích nhẹ trên màn hình làm hủy nhấn giữ
+    if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
+      if (pressTimer.current) clearTimeout(pressTimer.current);
+      setShowDuplicate(false);
+    }
+
+    if (!isSwiping) return;
 
     if (!isVerticalScroll) {
       if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 5) {
@@ -115,12 +119,14 @@ const SwipeableItem = ({
             className="absolute inset-0 z-[60] flex items-center justify-center bg-black/20 backdrop-blur-[2px] animate-ios-fade"
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               setShowDuplicate(false);
             }}
           >
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 setShowDuplicate(false);
                 if (onDuplicate) onDuplicate();
               }}
@@ -242,13 +248,18 @@ export default function History() {
 
   const handleDuplicate = (item) => {
     const txs = JSON.parse(localStorage.getItem("vys_transactions") || "[]");
+
+    // Lấy thời gian hiện tại
+    const now = new Date();
+
     const newItem = {
       ...item,
       id: Date.now().toString(),
-      date: new Date().toISOString(),
+      date: now.toISOString(), // Gán ngày hôm nay
       recurringId: null,
       repeatMode: "none",
     };
+
     const updated = [newItem, ...txs].sort(
       (a, b) => new Date(b.date) - new Date(a.date),
     );
@@ -568,7 +579,6 @@ export default function History() {
                               {tItem.category?.icon || "💰"}
                             </div>
 
-                            {/* Dọn dẹp chữ: Căn giữa tự động nếu không có Note */}
                             <div className="flex flex-col justify-center min-h-[42px] overflow-hidden">
                               <p className="font-bold text-[16px] leading-tight truncate">
                                 {tItem.category?.name ||
@@ -588,9 +598,11 @@ export default function History() {
                               ₫{tItem.amount.toLocaleString("vi-VN")}
                             </div>
 
-                            {/* Bổ sung icon Lặp lại (Repeat) nếu là giao dịch định kỳ */}
+                            {/* HIỂN THỊ ICON REPEAT NẾU LÀ GIAO DỊCH ĐỊNH KỲ */}
                             <div className="text-[12px] text-[#8e8e93] mt-0.5 leading-tight uppercase font-medium flex items-center justify-end gap-1">
-                              {tItem.recurringId && (
+                              {(tItem.recurringId ||
+                                (tItem.repeatMode &&
+                                  tItem.repeatMode !== "none")) && (
                                 <Repeat size={12} className="text-[#32ade6]" />
                               )}
                               {tItem.date
@@ -621,7 +633,7 @@ export default function History() {
         </div>
       </div>
 
-      {/* MODAL XÓA - Nâng z-index lên 100, Full Tiếng Anh */}
+      {/* MODAL XÓA */}
       {itemToDelete && (
         <div
           className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 animate-ios-fade"
@@ -687,7 +699,7 @@ export default function History() {
         </div>
       )}
 
-      {/* MODAL XÁC NHẬN SỬA ĐỊNH KỲ - Nâng z-index lên 100, Full Tiếng Anh */}
+      {/* MODAL XÁC NHẬN SỬA ĐỊNH KỲ */}
       {editConfirmOption && (
         <div
           className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 animate-ios-fade"
@@ -727,7 +739,7 @@ export default function History() {
         </div>
       )}
 
-      {/* MODAL EDIT - Nâng z-index lên 100 */}
+      {/* MODAL EDIT */}
       {editingItem && (
         <div
           className="fixed inset-0 bg-black/70 z-[100] flex flex-col justify-end animate-ios-fade"

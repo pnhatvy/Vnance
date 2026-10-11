@@ -12,7 +12,6 @@ export default function AddTransaction() {
   const [note, setNote] = useState("");
   const [repeat, setRepeat] = useState("none");
 
-  // Từ điển gợi ý nâng cấp (chứa cả category và type)
   const [pastNotes, setPastNotes] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
 
@@ -41,13 +40,12 @@ export default function AddTransaction() {
   const currentCategories = safeCategories.filter((c) => c.type === type);
   const [category, setCategory] = useState(currentCategories[0] || {});
 
-  // Quét lịch sử tạo "Từ điển thông minh"
   useEffect(() => {
     const txs = JSON.parse(localStorage.getItem("vys_transactions") || "[]");
-    const noteMap = new Map();
+    const noteFreq = new Map();
 
-    // Đảo ngược mảng để lấy category mới nhất người dùng hay dùng cho note đó
-    [...txs].reverse().forEach((t) => {
+    // Đếm tần suất sử dụng của các Note
+    txs.forEach((t) => {
       if (
         t.note &&
         t.note.trim() !== "" &&
@@ -56,17 +54,27 @@ export default function AddTransaction() {
         t.category
       ) {
         const key = t.note.toLowerCase().trim();
-        if (!noteMap.has(key)) {
-          noteMap.set(key, {
+        if (!noteFreq.has(key)) {
+          noteFreq.set(key, {
             note: t.note,
             category: t.category,
             type: t.type,
+            count: 1,
           });
+        } else {
+          noteFreq.get(key).count += 1;
         }
       }
     });
 
-    setPastNotes(Array.from(noteMap.values()));
+    // Sắp xếp Note theo số lần dùng nhiều nhất
+    const sortedNotes = Array.from(noteFreq.values()).sort(
+      (a, b) => b.count - a.count,
+    );
+    setPastNotes(sortedNotes);
+
+    // Mặc định hiện 3 Note hay dùng nhất khi chưa gõ gì
+    setSuggestions(sortedNotes.slice(0, 3));
   }, []);
 
   const handleNoteChange = (e) => {
@@ -81,16 +89,17 @@ export default function AddTransaction() {
       );
       setSuggestions(matches.slice(0, 3));
     } else {
-      setSuggestions([]);
+      // Khi xóa hết chữ thì quay lại hiện top 3
+      setSuggestions(pastNotes.slice(0, 3));
     }
   };
 
-  // Chọn gợi ý -> Tự động điền Note, chuyển Type và chọn đúng Category
   const acceptSuggestion = (sObj) => {
     setNote(sObj.note);
     if (sObj.type) setType(sObj.type);
     if (sObj.category) setCategory(sObj.category);
-    setSuggestions([]);
+    // Sau khi chọn vẫn giữ gợi ý top để người dùng có thể đổi ý
+    setSuggestions(pastNotes.slice(0, 3));
   };
 
   useEffect(() => {
@@ -387,9 +396,9 @@ export default function AddTransaction() {
             className={`mt-2 bg-transparent text-center focus:outline-none w-3/4 py-1.5 ${theme === "dark" ? "text-[#8e8e93] placeholder:text-[#8e8e93]/50" : "text-gray-600 placeholder:text-gray-400"}`}
           />
 
-          {/* HIỂN THỊ GỢI Ý CÓ KÈM ICON CATEGORY */}
+          {/* SỬA HIỂN THỊ GỢI Ý THÀNH HÀNG NGANG (SCROLL NGANG) */}
           {suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 flex justify-center flex-wrap gap-2 px-2 z-50">
+            <div className="absolute top-full left-0 right-0 mt-2 flex overflow-x-auto flex-nowrap gap-2 px-1 py-1 z-50 scrollbar-hide justify-center">
               {suggestions.map((s, idx) => (
                 <button
                   key={idx}
@@ -403,7 +412,7 @@ export default function AddTransaction() {
                     e.stopPropagation();
                     acceptSuggestion(s);
                   }}
-                  className={`px-3 py-1.5 rounded-full text-[13px] font-medium truncate max-w-[150px] shadow-sm active:scale-95 transition-transform flex items-center gap-1.5 ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black border border-gray-200"}`}
+                  className={`px-3.5 py-2 rounded-full text-[13px] font-medium whitespace-nowrap shadow-sm active:scale-95 transition-transform flex items-center gap-1.5 flex-shrink-0 ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black border border-gray-200"}`}
                 >
                   <span>{s.category?.icon}</span> {s.note}
                 </button>
