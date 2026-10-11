@@ -107,7 +107,7 @@ export default function History() {
   const { categories, setIsModalOpen, cycleStartDay, theme } = useAppContext();
 
   const [editingItem, setEditingItem] = useState(null);
-  const [editConfirmOption, setEditConfirmOption] = useState(false); // Modal Confirm Edit
+  const [editConfirmOption, setEditConfirmOption] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
   const [offset, setOffset] = useState(0);
@@ -228,12 +228,12 @@ export default function History() {
 
     setEditingItem({
       ...item,
-      originalDate: item.date, // Lưu lại thời gian gốc để so sánh khi sửa "tương lai"
+      originalDate: item.date,
       amount: item.amount ? item.amount.toString().replace(".", ",") : "0",
       editDate: localISODate,
       editTime: d.toTimeString().slice(0, 5),
       type: item.type || "expense",
-      repeat: item.repeatMode || "none", // Tự động load repeatMode (nếu lúc trước tạo có lưu)
+      repeat: item.repeatMode || "none",
     });
     setIsModalOpen(true);
   };
@@ -246,7 +246,6 @@ export default function History() {
 
   const handleSaveClick = () => {
     if (!editingItem.amount || editingItem.amount === ",") return;
-    // Bật bảng hỏi nếu đang sửa một giao dịch thuộc chuỗi định kỳ
     if (editingItem.recurringId) {
       setEditConfirmOption(true);
     } else {
@@ -277,7 +276,6 @@ export default function History() {
           };
         }
 
-        // Logic cũ: nếu giao dịch này HỒI TRƯỚC là "once" mà giờ bấm chuyển sang Lặp (Repeat)
         if (!editingItem.recurringId && editingItem.repeat !== "none") {
           let count = 0;
           if (editingItem.repeat === "daily") count = 365;
@@ -322,7 +320,6 @@ export default function History() {
               type: editingItem.type,
               note: editingItem.note,
               category: editingItem.category,
-              // Chỉ thay đổi giờ/ngày của cái đang sửa, những cái sau giữ nguyên mốc ngày của nó
               date:
                 t.id === editingItem.id
                   ? combinedDateTime.toISOString()
@@ -546,10 +543,10 @@ export default function History() {
         </div>
       </div>
 
-      {/* MODAL XÓA */}
+      {/* MODAL XÓA - Nâng z-index lên 80 */}
       {itemToDelete && (
         <div
-          className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4 animate-ios-fade"
+          className="fixed inset-0 bg-black/70 z-[80] flex items-center justify-center p-4 animate-ios-fade"
           onClick={() => setItemToDelete(null)}
         >
           <div
@@ -557,53 +554,53 @@ export default function History() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-bold text-center text-lg mb-2">
-              Xóa giao dịch?
+              Delete Transaction?
             </h3>
 
             {!itemToDelete.recurringId ? (
               <>
                 <p className="text-[#8e8e93] text-center text-sm mb-6">
-                  Bạn không thể hoàn tác hành động này.
+                  You cannot undo this action.
                 </p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setItemToDelete(null)}
                     className={`flex-1 py-2.5 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#3a3a3c] text-white" : "bg-gray-200 text-black"}`}
                   >
-                    Hủy
+                    Cancel
                   </button>
                   <button
                     onClick={() => handleDeleteOption("only_this")}
                     className="flex-1 bg-[#ff453a] text-white py-2.5 rounded-xl font-semibold active:opacity-70"
                   >
-                    Xóa
+                    Delete
                   </button>
                 </div>
               </>
             ) : (
               <>
                 <p className="text-[#8e8e93] text-center text-[13px] mb-5">
-                  Đây là giao dịch định kỳ. Bạn muốn xóa phần nào?
+                  This is a recurring transaction. What would you like to
+                  delete?
                 </p>
                 <div className="flex flex-col gap-2">
-                  {/* STYLE MỚI: Tinh tế theo iOS (Màu nền xám nhẹ, text cảnh báo đỏ) */}
                   <button
                     onClick={() => handleDeleteOption("only_this")}
                     className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#ff453a]" : "bg-gray-100 text-[#ff453a]"}`}
                   >
-                    Chỉ xóa giao dịch này
+                    Delete this transaction only
                   </button>
                   <button
                     onClick={() => handleDeleteOption("this_and_future")}
                     className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#ff453a]" : "bg-gray-100 text-[#ff453a]"}`}
                   >
-                    Xóa từ mục này trở đi
+                    Delete this and future transactions
                   </button>
                   <button
                     onClick={() => setItemToDelete(null)}
                     className={`w-full py-3 rounded-xl font-semibold active:opacity-70 mt-2 ${theme === "dark" ? "bg-[#3a3a3c] text-white" : "bg-gray-200 text-black"}`}
                   >
-                    Hủy
+                    Cancel
                   </button>
                 </div>
               </>
@@ -612,10 +609,10 @@ export default function History() {
         </div>
       )}
 
-      {/* MODAL HỎI SAU KHI BẤM "SAVE" ĐỐI VỚI GIAO DỊCH ĐỊNH KỲ */}
+      {/* MODAL XÁC NHẬN SỬA ĐỊNH KỲ - Nâng z-index lên 90 */}
       {editConfirmOption && (
         <div
-          className="fixed inset-0 bg-black/70 z-[70] flex items-center justify-center p-4 animate-ios-fade"
+          className="fixed inset-0 bg-black/70 z-[90] flex items-center justify-center p-4 animate-ios-fade"
           onClick={() => setEditConfirmOption(false)}
         >
           <div
@@ -623,43 +620,43 @@ export default function History() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-bold text-center text-lg mb-2">
-              Sửa giao dịch định kỳ
+              Edit Recurring Transaction
             </h3>
             <p className="text-[#8e8e93] text-center text-[13px] mb-5">
-              Bạn muốn áp dụng thay đổi này cho những giao dịch nào?
+              How would you like to apply this change?
             </p>
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => executeSave("only_this")}
                 className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#32ade6]" : "bg-gray-100 text-[#007aff]"}`}
               >
-                Chỉ sửa giao dịch này
+                Edit this transaction only
               </button>
               <button
                 onClick={() => executeSave("this_and_future")}
                 className={`w-full py-3 rounded-xl font-semibold active:opacity-70 ${theme === "dark" ? "bg-[#2c2c2e] text-[#32ade6]" : "bg-gray-100 text-[#007aff]"}`}
               >
-                Sửa mục này và tương lai
+                Edit this and future transactions
               </button>
               <button
                 onClick={() => setEditConfirmOption(false)}
                 className={`w-full py-3 rounded-xl font-semibold active:opacity-70 mt-2 ${theme === "dark" ? "bg-[#3a3a3c] text-white" : "bg-gray-200 text-black"}`}
               >
-                Hủy
+                Cancel
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL EDIT */}
+      {/* MODAL EDIT - Nâng z-index lên 80 */}
       {editingItem && (
         <div
-          className="fixed inset-0 bg-black/70 z-[50] flex flex-col justify-end animate-ios-fade"
+          className="fixed inset-0 bg-black/70 z-[80] flex flex-col justify-end animate-ios-fade"
           onClick={closeEdit}
         >
           <div
-            className={`w-full max-w-md mx-auto rounded-t-3xl p-5 pb-10 shadow-2xl animate-ios-slide ${theme === "dark" ? "bg-[#1c1c1e] text-white" : "bg-white text-black"}`}
+            className={`w-full max-w-md mx-auto rounded-t-3xl p-5 pb-12 shadow-2xl animate-ios-slide ${theme === "dark" ? "bg-[#1c1c1e] text-white" : "bg-white text-black"}`}
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="font-bold text-center mb-6 text-lg">
