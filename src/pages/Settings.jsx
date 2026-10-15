@@ -44,7 +44,6 @@ export default function Settings() {
   const [user, setUser] = useState(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // STATE MỚI CHO CLOUD SYNC
   const [syncState, setSyncState] = useState({ type: null, status: null });
   const [lastBackupTime, setLastBackupTime] = useState(null);
   const [hourlyInput, setHourlyInput] = useState(workHourlyRate.toString());
@@ -426,10 +425,26 @@ export default function Settings() {
 
   const saveCategory = () => {
     if (!catForm.name.trim()) return;
-    if (catForm.id)
+
+    if (catForm.id) {
       setCategories(categories.map((c) => (c.id === catForm.id ? catForm : c)));
-    else
+
+      // TỰ ĐỘNG ĐỒNG BỘ CẢ LỊCH SỬ GIAO DỊCH
+      const txs = JSON.parse(localStorage.getItem("vys_transactions") || "[]");
+      let hasChanges = false;
+      const updatedTxs = txs.map((t) => {
+        if (t.category && t.category.id === catForm.id) {
+          hasChanges = true;
+          return { ...t, category: catForm };
+        }
+        return t;
+      });
+      if (hasChanges) {
+        localStorage.setItem("vys_transactions", JSON.stringify(updatedTxs));
+      }
+    } else {
       setCategories([...categories, { id: Date.now().toString(), ...catForm }]);
+    }
     closeModals();
   };
 
@@ -617,7 +632,6 @@ export default function Settings() {
           className="flex-1 overflow-y-auto px-4 pt-6 pb-32 space-y-6 overscroll-y-auto"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
-          {/* ACCOUNT & SYNC MỚI */}
           <div>
             <h3 className="text-[#8e8e93] text-[11px] font-bold uppercase tracking-widest ml-4 mb-2">
               Account & Sync
@@ -679,7 +693,6 @@ export default function Settings() {
                     </button>
                   </div>
 
-                  {/* CỤM NÚT GẠT BACKUP / RESTORE */}
                   <div className="p-4 flex flex-col gap-3">
                     <div
                       className={`flex rounded-xl p-1 w-full ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-100"}`}
@@ -754,7 +767,6 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* PREFERENCES */}
           <div>
             <h3 className="text-[#8e8e93] text-[11px] font-bold uppercase tracking-widest ml-4 mb-2">
               Preferences
@@ -800,7 +812,6 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* BUDGET CYCLE */}
           <div>
             <h3 className="text-[#8e8e93] text-[11px] font-bold uppercase tracking-widest ml-4 mb-2">
               Budget Cycle
@@ -838,7 +849,6 @@ export default function Settings() {
             {renderCategoryList(incomeCategories, "income")}
           </div>
 
-          {/* DATA */}
           <div>
             <h3 className="text-[#8e8e93] text-[11px] font-bold uppercase tracking-widest ml-4 mb-2">
               Data
@@ -868,7 +878,6 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* CÁC MODAL BÊN DƯỚI GIỮ NGUYÊN KHÔNG ĐỔI */}
       {modalType === "hourly" && (
         <div
           className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4 animate-ios-fade"

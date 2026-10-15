@@ -43,15 +43,19 @@ export default function AddTransaction() {
   useEffect(() => {
     const txs = JSON.parse(localStorage.getItem("vys_transactions") || "[]");
     const noteFreq = new Map();
+    const now = new Date();
 
     txs.forEach((t) => {
+      const txDate = new Date(t.date);
+      // Bỏ qua các giao dịch repeat trong tương lai
+      if (txDate > now) return;
+
       if (
         t.note &&
         t.note.trim() !== "" &&
         t.note !== "Expense" &&
         t.note !== "Income" &&
-        t.category &&
-        t.note !== t.category.name
+        t.category
       ) {
         const key = t.note.toLowerCase().trim();
         if (!noteFreq.has(key)) {
@@ -75,7 +79,7 @@ export default function AddTransaction() {
 
   useEffect(() => {
     if (!note.trim()) {
-      setSuggestions(pastNotes.slice(0, 3));
+      setSuggestions(pastNotes.slice(0, 2));
     }
   }, [note, pastNotes]);
 
@@ -89,9 +93,9 @@ export default function AddTransaction() {
           n.note.toLowerCase().includes(val.toLowerCase()) &&
           n.note.toLowerCase() !== val.toLowerCase(),
       );
-      setSuggestions(matches.slice(0, 3));
+      setSuggestions(matches.slice(0, 2));
     } else {
-      setSuggestions(pastNotes.slice(0, 3));
+      setSuggestions(pastNotes.slice(0, 2));
     }
   };
 
@@ -99,7 +103,7 @@ export default function AddTransaction() {
     setNote(sObj.note);
     if (sObj.type) setType(sObj.type);
     if (sObj.category) setCategory(sObj.category);
-    setSuggestions(pastNotes.slice(0, 3));
+    setSuggestions(pastNotes.slice(0, 2));
   };
 
   useEffect(() => {
@@ -374,7 +378,6 @@ export default function AddTransaction() {
           <span>{displayAmount()}</span>
         </div>
 
-        {/* Bóp chiều cao khối này để kéo ô Note lên gần số tiền hơn */}
         <div className="h-5 flex items-center justify-center mb-1">
           {calculatedHours() && (
             <span
@@ -388,7 +391,6 @@ export default function AddTransaction() {
         </div>
 
         <div className="relative w-full flex flex-col items-center">
-          {/* Bỏ margin-top dư thừa để input sát lên trên */}
           <input
             type="text"
             placeholder="+ Add note..."

@@ -220,7 +220,11 @@ export default function Analytics() {
       "NOV",
       "DEC",
     ];
-    return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
+    let header = `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
+    if (timeFilter === "year") {
+      header += `, ${d.getFullYear()}`;
+    }
+    return header;
   };
 
   const openDetail = (cat) => {
@@ -786,7 +790,7 @@ export default function Analytics() {
                                 className="h-full rounded-full transition-all duration-300"
                                 style={{
                                   width: `${Math.min(displayPercent || 0, 100)}%`,
-                                  backgroundColor: cat.color || "#32ade6", // ĐÃ FIX: Giữ nguyên màu danh mục, không đổi sang đỏ
+                                  backgroundColor: cat.color || "#32ade6",
                                 }}
                               ></div>
                             )}
@@ -802,7 +806,6 @@ export default function Analytics() {
                               ></div>
                             )}
                         </div>
-                        {/* Chỉ có đoạn text phần trăm này là biến đỏ nếu over budget */}
                         <span
                           className={`text-[12px] font-bold min-w-[32px] text-right ${isOver ? "text-[#ff453a]" : "text-[#8e8e93]"}`}
                         >

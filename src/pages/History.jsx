@@ -383,7 +383,11 @@ export default function History() {
       "NOV",
       "DEC",
     ];
-    return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
+    let header = `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
+    if (timeFilter === "all") {
+      header += `, ${d.getFullYear()}`;
+    }
+    return header;
   };
 
   return (
