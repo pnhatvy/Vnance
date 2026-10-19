@@ -55,7 +55,7 @@ html, body {
 }
 
 .bottom-nav {
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(4px + env(safe-area-inset-bottom, 0px));
   min-height: 68px;
   isolation: isolate;
   -webkit-backdrop-filter: blur(24px) saturate(1.55);
