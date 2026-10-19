@@ -152,6 +152,7 @@ export default function Goals() {
     const transactions = JSON.parse(
       localStorage.getItem("vys_transactions") || "[]",
     );
+    const now = new Date();
     let totalSpentMonth = 0;
     let totalEarnedMonth = 0;
 
@@ -159,7 +160,7 @@ export default function Goals() {
       const amount = Number(t.amount) || 0;
       if (t.date) {
         const d = new Date(t.date);
-        if (d >= bounds.start && d < bounds.end) {
+        if (d >= bounds.start && d < bounds.end && d <= now) {
           if (t.type === "expense") totalSpentMonth += amount;
           if (t.type === "income") totalEarnedMonth += amount;
         }
@@ -195,35 +196,42 @@ export default function Goals() {
     const transactions = JSON.parse(
       localStorage.getItem("vys_transactions") || "[]",
     );
+    const now = new Date();
     let cumulativeEarned = 0;
     let cumulativeSpent = 0;
     let totalExpenseAllTime = 0;
-    let firstDate = new Date();
+    let firstActualDate = null;
 
     transactions.forEach((t) => {
       const amount = Number(t.amount) || 0;
       if (t.date) {
         const d = new Date(t.date);
-        if (d < firstDate) firstDate = d;
-        if (d < bounds.end) {
-          if (t.type === "expense") cumulativeSpent += amount;
-          if (t.type === "income") cumulativeEarned += amount;
+        // Recurring entries are pre-created, so only count them once due.
+        if (d <= now) {
+          if (!firstActualDate || d < firstActualDate) firstActualDate = d;
+          if (d < bounds.end) {
+            if (t.type === "expense") cumulativeSpent += amount;
+            if (t.type === "income") cumulativeEarned += amount;
+          }
+          if (t.type === "expense") totalExpenseAllTime += amount;
         }
-        if (t.type === "expense") totalExpenseAllTime += amount;
       }
     });
 
     setHistoricalNetWorth(currentInitBal + cumulativeEarned - cumulativeSpent);
 
-    const now = new Date();
-    const monthsActive = Math.max(
-      1,
-      (now.getFullYear() - firstDate.getFullYear()) * 12 +
-        now.getMonth() -
-        firstDate.getMonth() +
+    if (firstActualDate) {
+      const monthsActive = Math.max(
         1,
-    );
-    setAvgMonthlySpend(totalExpenseAllTime / monthsActive);
+        (now.getFullYear() - firstActualDate.getFullYear()) * 12 +
+          now.getMonth() -
+          firstActualDate.getMonth() +
+          1,
+      );
+      setAvgMonthlySpend(totalExpenseAllTime / monthsActive);
+    } else {
+      setAvgMonthlySpend(0);
+    }
   }, [bounds.key, cycleStartDay, editState.isOpen]);
 
   const activeBudget = monthlyBudget || 0;
@@ -241,7 +249,7 @@ export default function Goals() {
   const runwayMonths =
     avgMonthlySpend > 0 && historicalNetWorth > 0
       ? (historicalNetWorth / avgMonthlySpend).toFixed(1)
-      : 0;
+      : "0.0";
 
   const now = new Date();
   let expectedPacePercent = 0;
@@ -572,7 +580,7 @@ export default function Goals() {
                 style={{ width: `${Math.min(overallPercent, 100)}%` }}
               ></div>
             </div>
-            {historicalNetWorth > 0 && avgMonthlySpend > 0 && (
+            {avgMonthlySpend > 0 && (
               <div className="flex justify-between items-center text-[12px] text-[#8e8e93] mt-3 font-medium">
                 <span>
                   Burn rate:{" "}
