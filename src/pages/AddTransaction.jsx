@@ -371,7 +371,7 @@ export default function AddTransaction() {
         </span>
         <div className="text-[56px] font-bold tracking-tight flex items-baseline">
           <span
-            className={`text-4xl mr-1 underline underline-offset-8 ${theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
+            className={`text-4xl mr-1 ${theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
           >
             ₫
           </span>

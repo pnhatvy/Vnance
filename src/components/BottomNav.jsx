@@ -2,68 +2,65 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { List, PieChart, Plus, Target, Settings } from "lucide-react";
 import { useAppContext } from "../AppContext";
 
+const navItems = [
+  { id: "/history", icon: List, label: "History" },
+  { id: "/", icon: PieChart, label: "Analytics" },
+  { id: "/add", icon: Plus, label: "Add", isAdd: true },
+  { id: "/goals", icon: Target, label: "Goals" },
+  { id: "/settings", icon: Settings, label: "Settings" },
+];
+
 export default function BottomNav() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { pathname } = useLocation();
   const { theme } = useAppContext();
-
-  const navItems = [
-    // Đã fix: Đổi id thành đường dẫn chuẩn và dùng đúng icon List
-    { id: "/history", icon: List, label: "History" },
-    { id: "/", icon: PieChart, label: "Analytics" },
-    { id: "add", icon: Plus, label: "Add", isAdd: true },
-    { id: "/goals", icon: Target, label: "Goals" },
-    { id: "/settings", icon: Settings, label: "Settings" },
-  ];
+  const isDark = theme === "dark";
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-[360px]">
-      <div
-        className={`flex justify-between items-center px-4 py-3 rounded-[32px] transition-colors duration-300 ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)]"}`}
-      >
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.id;
+    <nav
+      aria-label="Main navigation"
+      className={`bottom-nav fixed inset-x-0 z-50 mx-auto flex w-[min(92%,420px)] items-center justify-between rounded-[28px] px-2 py-2 ${isDark ? "bottom-nav-dark" : "bottom-nav-light"}`}
+    >
+      {navItems.map(({ id, icon: Icon, label, isAdd }) => {
+        const isActive = pathname === id;
 
-          if (item.isAdd) {
-            return (
-              <button
-                key={item.id}
-                onClick={() => navigate("/add")}
-                className="w-[42px] h-[42px] bg-[#32d74b] rounded-full flex items-center justify-center active:scale-95 transition-transform flex-shrink-0 shadow-sm mx-1"
-              >
-                <item.icon size={24} color="black" strokeWidth={3} />
-              </button>
-            );
-          }
-
+        if (isAdd) {
           return (
             <button
-              key={item.id}
-              onClick={() => navigate(item.id)}
-              className="flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform w-[52px]"
+              key={id}
+              type="button"
+              aria-label="Add transaction"
+              onClick={() => navigate(id)}
+              className="nav-add group flex h-[52px] w-[56px] shrink-0 items-center justify-center rounded-[20px] transition-transform duration-200 active:scale-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
             >
-              <item.icon
-                size={22}
-                className={
-                  isActive
-                    ? theme === "dark"
-                      ? "text-white"
-                      : "text-black"
-                    : theme === "dark"
-                      ? "text-[#8e8e93]"
-                      : "text-gray-400"
-                }
-                strokeWidth={isActive ? 2.5 : 2}
-              />
-              <span
-                className={`text-[10px] font-semibold leading-none ${isActive ? (theme === "dark" ? "text-white" : "text-black") : theme === "dark" ? "text-[#8e8e93]" : "text-gray-400"}`}
-              >
-                {item.label}
-              </span>
+              <Icon size={25} strokeWidth={2.6} aria-hidden="true" />
             </button>
           );
-        })}
-      </div>
-    </div>
+        }
+
+        return (
+          <button
+            key={id}
+            type="button"
+            aria-label={label}
+            aria-current={isActive ? "page" : undefined}
+            onClick={() => navigate(id)}
+            className={`nav-item group relative flex h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[20px] transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-emerald-500 ${isActive ? "nav-item-active" : ""}`}
+          >
+            <span className="nav-icon-wrap relative flex h-6 items-center justify-center">
+              <Icon
+                className="nav-icon relative z-10 transition-transform duration-300 group-active:scale-90"
+                size={21}
+                strokeWidth={2}
+                aria-hidden="true"
+              />
+            </span>
+            <span className="text-[10px] font-semibold leading-none tracking-[0.01em]">
+              {label}
+            </span>
+          </button>
+        );
+      })}
+    </nav>
   );
 }
