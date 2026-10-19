@@ -51,11 +51,13 @@ export default function BottomNav() {
               <Icon
                 className="nav-icon relative z-10 transition-transform duration-300 group-active:scale-90"
                 size={21}
-                strokeWidth={2}
+                strokeWidth={isActive ? 2.5 : 2}
                 aria-hidden="true"
               />
             </span>
-            <span className="text-[10px] font-semibold leading-none tracking-[0.01em]">
+            <span
+              className={`text-[10px] leading-none tracking-[0.01em] ${isActive ? "font-bold" : "font-medium"}`}
+            >
               {label}
             </span>
           </button>

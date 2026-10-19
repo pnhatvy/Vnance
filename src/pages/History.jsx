@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Repeat,
+  X,
 } from "lucide-react";
 import { useAppContext } from "../AppContext";
 
@@ -690,19 +691,33 @@ export default function History() {
               Edit {editingItem.type === "expense" ? "Expense" : "Income"}
             </h2>
             <div className="flex gap-2 mb-6">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={formatDisplayAmount(editingItem.amount)}
-                onChange={(e) => {
-                  let val = e.target.value
-                    .replace(/\./g, "")
-                    .replace(/[^0-9,]/g, "");
-                  if (val.split(",").length > 2) val = val.slice(0, -1);
-                  setEditingItem({ ...editingItem, amount: val });
-                }}
-                className={`flex-1 rounded-xl px-4 py-3 outline-none font-bold text-lg ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-gray-100 text-black"}`}
-              />
+              <div className="relative min-w-0 flex-1">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={formatDisplayAmount(editingItem.amount)}
+                  onChange={(e) => {
+                    let val = e.target.value
+                      .replace(/\./g, "")
+                      .replace(/[^0-9,]/g, "");
+                    if (val.split(",").length > 2) val = val.slice(0, -1);
+                    setEditingItem({ ...editingItem, amount: val });
+                  }}
+                  className={`w-full rounded-xl py-3 pl-4 pr-10 outline-none font-bold text-lg ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-gray-100 text-black"}`}
+                />
+                {editingItem.amount && (
+                  <button
+                    type="button"
+                    aria-label="Clear amount"
+                    onClick={() =>
+                      setEditingItem({ ...editingItem, amount: "" })
+                    }
+                    className={`absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full ${theme === "dark" ? "bg-[#48484a] text-gray-200" : "bg-gray-300 text-gray-700"}`}
+                  >
+                    <X size={15} strokeWidth={2.5} />
+                  </button>
+                )}
+              </div>
               <button
                 onClick={toggleEditType}
                 className={`px-4 rounded-xl font-semibold text-sm ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-gray-100 text-black"}`}
