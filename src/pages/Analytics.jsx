@@ -6,27 +6,20 @@ export default function Analytics() {
   const { monthlyBudget, monthlyIncomeGoal, cycleStartDay, theme, categories } =
     useAppContext();
   const [transactions, setTransactions] = useState([]);
-
   const [timeFilter, setTimeFilter] = useState("month");
   const [typeFilter, setTypeFilter] = useState("expense");
   const [offset, setOffset] = useState(0);
-
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
-
   const [catViewMode, setCatViewMode] = useState("limit");
   const [catLimits, setCatLimits] = useState({});
   const [monthlyCatLimits, setMonthlyCatLimits] = useState({});
-
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [limitScope, setLimitScope] = useState("all");
   const [limitForm, setLimitForm] = useState({ categoryId: null, amount: "0" });
-
   const [saveLimitSuccess, setSaveLimitSuccess] = useState(false);
-
   const [, setGoalsTrigger] = useState(0);
   const rawDataRef = useRef({ tx: "", goals: "", limits: "", mLimits: "" });
-
   const detailContainerRef = useRef(null);
 
   useEffect(() => {
@@ -36,7 +29,6 @@ export default function Analytics() {
         rawDataRef.current.tx = txRaw;
         setTransactions(JSON.parse(txRaw));
       }
-
       const gRaw1 = localStorage.getItem("vys_monthly_goals") || "{}";
       const gRaw2 = localStorage.getItem("vys_global_goals") || "{}";
       const combinedGoals = gRaw1 + gRaw2;
@@ -44,13 +36,11 @@ export default function Analytics() {
         rawDataRef.current.goals = combinedGoals;
         setGoalsTrigger((prev) => prev + 1);
       }
-
       const limitsRaw = localStorage.getItem("vys_category_limits") || "{}";
       if (limitsRaw !== rawDataRef.current.limits) {
         rawDataRef.current.limits = limitsRaw;
         setCatLimits(JSON.parse(limitsRaw));
       }
-
       const mLimitsRaw =
         localStorage.getItem("vys_monthly_category_limits") || "{}";
       if (mLimitsRaw !== rawDataRef.current.mLimits) {
@@ -58,7 +48,6 @@ export default function Analytics() {
         setMonthlyCatLimits(JSON.parse(mLimitsRaw));
       }
     };
-
     loadData();
     const interval = setInterval(loadData, 500);
     return () => clearInterval(interval);
@@ -129,7 +118,6 @@ export default function Analytics() {
   };
 
   const bounds = getPeriodBounds();
-
   let currentBudget = 0;
   let currentIncomeGoal = 0;
 
@@ -138,7 +126,6 @@ export default function Analytics() {
     const mGoals = JSON.parse(
       localStorage.getItem("vys_monthly_goals") || "{}",
     );
-
     let autoSum = 0;
     if (timeFilter === "month" && bounds.monthKey) {
       const currentLocalLimits = monthlyCatLimits[bounds.monthKey] || {};
@@ -168,7 +155,6 @@ export default function Analytics() {
           glob.expense || glob.budget || monthlyBudget || 0,
         );
       }
-
       if (
         mGoals[bounds.monthKey] &&
         mGoals[bounds.monthKey].income !== undefined
@@ -221,9 +207,7 @@ export default function Analytics() {
       "DEC",
     ];
     let header = `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
-    if (timeFilter === "year") {
-      header += `, ${d.getFullYear()}`;
-    }
+    if (timeFilter === "year") header += `, ${d.getFullYear()}`;
     return header;
   };
 
@@ -239,7 +223,6 @@ export default function Analytics() {
   useEffect(() => {
     const container = detailContainerRef.current;
     if (!container || !showDetail) return;
-
     let startY = 0,
       startX = 0,
       currentY = 0;
@@ -259,17 +242,13 @@ export default function Analytics() {
 
     const handleTouchMove = (e) => {
       if (!isDragging || isClosing) return;
-
       const diffX = e.touches[0].clientX - startX;
       const diffY = e.touches[0].clientY - startY;
-
       if (!dragDirection) {
         if (Math.abs(diffX) > Math.abs(diffY)) dragDirection = "horizontal";
         else dragDirection = "vertical";
       }
-
       if (dragDirection === "horizontal") return;
-
       if (
         dragDirection === "vertical" &&
         diffY > 0 &&
@@ -277,7 +256,6 @@ export default function Analytics() {
       ) {
         e.preventDefault();
         currentY = diffY;
-
         if (rafId) cancelAnimationFrame(rafId);
         rafId = requestAnimationFrame(() => {
           container.style.transform = `translate3d(0, ${currentY}px, 0)`;
@@ -289,10 +267,8 @@ export default function Analytics() {
       if (!isDragging || isClosing) return;
       isDragging = false;
       if (rafId) cancelAnimationFrame(rafId);
-
       container.style.transition =
         "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)";
-
       if (currentY > 150) {
         isClosing = true;
         container.style.transform = `translate3d(0, 100dvh, 0)`;
@@ -351,18 +327,15 @@ export default function Analytics() {
   const pastData = filteredData.filter((item) => new Date(item.date) <= now);
   const totalAmountPast = pastData.reduce((sum, item) => sum + item.amount, 0);
   const futureDataTotal = totalAmount - totalAmountPast;
-
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const periodStart = new Date(
     bounds.start.getFullYear(),
     bounds.start.getMonth(),
     bounds.start.getDate(),
   );
-
   let daysPassed = Math.round((todayStart - periodStart) / 86400000) + 1;
   if (daysPassed > daysInCycle) daysPassed = daysInCycle;
   if (daysPassed < 1) daysPassed = 1;
-
   const dailyAverage = totalAmountPast / daysPassed;
   const onPaceFor = isCurrentPeriod
     ? dailyAverage * daysInCycle + futureDataTotal
@@ -396,7 +369,6 @@ export default function Analytics() {
     const currentMonthKey = bounds.monthKey;
     const localLimit = monthlyCatLimits[currentMonthKey]?.[catId];
     const globalLimit = catLimits[catId];
-
     if (localLimit !== undefined) {
       setLimitForm({
         categoryId: catId,
@@ -457,7 +429,6 @@ export default function Analytics() {
       if (!newMonthlyLimits[currentMonthKey])
         newMonthlyLimits[currentMonthKey] = {};
       newMonthlyLimits[currentMonthKey][limitForm.categoryId] = numericAmount;
-
       setMonthlyCatLimits(newMonthlyLimits);
       localStorage.setItem(
         "vys_monthly_category_limits",
@@ -487,11 +458,8 @@ export default function Analytics() {
         );
       }
     }
-
     setSaveLimitSuccess(true);
-    setTimeout(() => {
-      setSaveLimitSuccess(false);
-    }, 2500);
+    setTimeout(() => setSaveLimitSuccess(false), 2500);
   };
 
   const formatDisplayAmount = (val) => {
@@ -501,6 +469,35 @@ export default function Analytics() {
       ? `${parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".")},${parts[1]}`
       : parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
+
+  // Sparkline data calculation from ALL filteredData
+  const globalGroupedData = filteredData.reduce((acc, tran) => {
+    const d = tran.date ? new Date(tran.date) : new Date();
+    d.setHours(0, 0, 0, 0);
+    const dateKey = d.getTime();
+    if (!acc[dateKey]) acc[dateKey] = 0;
+    acc[dateKey] += tran.amount;
+    return acc;
+  }, {});
+
+  const sortedGlobalKeys = Object.keys(globalGroupedData).sort(
+    (a, b) => Number(a) - Number(b),
+  );
+  const sparklineData = sortedGlobalKeys.map((k) => globalGroupedData[k]);
+
+  let sparklinePoints = "";
+  if (sparklineData.length > 1) {
+    const maxVal = Math.max(...sparklineData, 1);
+    sparklinePoints = sparklineData
+      .map((val, idx) => {
+        const x = (idx / (sparklineData.length - 1)) * 100;
+        const y = 30 - (val / maxVal) * 20;
+        return `${x},${y}`;
+      })
+      .join(" ");
+  } else if (sparklineData.length === 1) {
+    sparklinePoints = "0,20 100,20";
+  }
 
   return (
     <>
@@ -593,18 +590,18 @@ export default function Analytics() {
                     if (!e.target.value) return;
                     const selectedDate = new Date(e.target.value);
                     const today = new Date();
-                    if (timeFilter === "month") {
-                      const mDiff =
+                    if (timeFilter === "month")
+                      setOffset(
                         (selectedDate.getFullYear() - today.getFullYear()) *
                           12 +
-                        (selectedDate.getMonth() - today.getMonth());
-                      setOffset(mDiff);
-                    } else {
-                      const dayDiff = Math.round(
-                        (selectedDate - today) / (1000 * 60 * 60 * 24),
+                          (selectedDate.getMonth() - today.getMonth()),
                       );
-                      setOffset(Math.floor(dayDiff / 7));
-                    }
+                    else
+                      setOffset(
+                        Math.floor(
+                          Math.round((selectedDate - today) / 86400000) / 7,
+                        ),
+                      );
                     e.target.value = "";
                   }}
                 />
@@ -623,12 +620,36 @@ export default function Analytics() {
           className="flex-1 overflow-y-auto px-4 pt-4 pb-32 overscroll-y-auto"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
-          {timeFilter === "month" ? (
-            <div className="mb-5">
-              <div className="flex gap-2.5 mb-3">
-                <div
-                  className={`flex-1 rounded-xl p-4 ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-white shadow-sm"}`}
-                >
+          <div className="mb-5">
+            <div className="flex gap-2.5 mb-3">
+              <div
+                className={`flex-1 rounded-xl p-4 relative overflow-hidden ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-white shadow-sm"}`}
+              >
+                {/* SPARKLINE CHART */}
+                {sparklinePoints && (
+                  <svg
+                    className={`absolute bottom-0 left-0 w-full h-12 pointer-events-none opacity-50 ${theme === "dark" ? "text-gray-500" : "text-gray-300"}`}
+                    viewBox="0 0 100 30"
+                    preserveAspectRatio="none"
+                  >
+                    <polyline
+                      points={sparklinePoints}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      vectorEffect="non-scaling-stroke"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <polyline
+                      points={`100,30 0,30 ${sparklinePoints}`}
+                      fill="currentColor"
+                      opacity="0.15"
+                      stroke="none"
+                    />
+                  </svg>
+                )}
+                <div className="relative z-10">
                   <p className="text-[#8e8e93] text-xs font-semibold mb-1">
                     {typeFilter === "expense" ? "Spent" : "Earned"}
                   </p>
@@ -636,6 +657,9 @@ export default function Analytics() {
                     ₫{totalAmount.toLocaleString("vi-VN")}
                   </div>
                 </div>
+              </div>
+
+              {timeFilter === "month" && (
                 <div
                   className={`flex-1 rounded-xl p-4 ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-white shadow-sm"}`}
                 >
@@ -649,8 +673,12 @@ export default function Analytics() {
                     {Math.abs(budgetLeft).toLocaleString("vi-VN")}
                   </div>
                 </div>
-              </div>
-              {isCurrentPeriod && typeFilter === "expense" && (
+              )}
+            </div>
+
+            {isCurrentPeriod &&
+              typeFilter === "expense" &&
+              timeFilter === "month" && (
                 <div className="px-1">
                   <p className="text-sm font-semibold">
                     <span className="text-[#8e8e93]">On pace for </span>
@@ -664,35 +692,22 @@ export default function Analytics() {
                   </p>
                 </div>
               )}
-            </div>
-          ) : (
-            <div className="mb-5">
-              <div
-                className={`rounded-xl p-4 mb-3 ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-white shadow-sm"}`}
-              >
-                <p className="text-[#8e8e93] text-xs font-semibold mb-1">
-                  {typeFilter === "expense" ? `Spent` : `Earned`}
+
+            {isCurrentPeriod && timeFilter === "year" && (
+              <div className="px-1">
+                <p className="text-sm font-semibold">
+                  <span className="text-[#8e8e93]">Yearly pace </span>
+                  <span className="text-[#32ade6]">
+                    ₫{Math.round(onPaceFor).toLocaleString("vi-VN")}
+                  </span>
                 </p>
-                <div className="text-[22px] font-bold tracking-tight">
-                  ₫{totalAmount.toLocaleString("vi-VN")}
-                </div>
+                <p className="text-[13px] text-[#5c5c60] font-semibold mt-0.5">
+                  ₫{Math.round(onPaceFor / 12).toLocaleString("vi-VN")}/mo
+                  average
+                </p>
               </div>
-              {isCurrentPeriod && timeFilter === "year" && (
-                <div className="px-1">
-                  <p className="text-sm font-semibold">
-                    <span className="text-[#8e8e93]">Yearly pace </span>
-                    <span className="text-[#32ade6]">
-                      ₫{Math.round(onPaceFor).toLocaleString("vi-VN")}
-                    </span>
-                  </p>
-                  <p className="text-[13px] text-[#5c5c60] font-semibold mt-0.5">
-                    ₫{Math.round(onPaceFor / 12).toLocaleString("vi-VN")}/mo
-                    average
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+            )}
+          </div>
 
           <div
             className={`rounded-2xl px-5 pt-3 pb-2 ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-white shadow-sm"}`}
@@ -743,7 +758,6 @@ export default function Analytics() {
                   const globalLimit = catLimits[cat.id];
                   const activeLimit =
                     localLimit !== undefined ? localLimit : globalLimit;
-
                   if (activeLimit) {
                     limitAmt = activeLimit;
                     displayPercent = (cat.spent / limitAmt) * 100;
@@ -767,9 +781,17 @@ export default function Analytics() {
                       <div className="flex justify-between items-center mb-1.5">
                         <div className="flex items-center gap-3">
                           <span className="text-[20px]">{cat.icon}</span>
-                          <span className="font-bold text-[15px]">
-                            {cat.name}
-                          </span>
+                          <div className="flex flex-col justify-center">
+                            <span className="font-bold text-[15px] leading-tight">
+                              {cat.name}
+                            </span>
+                            {/* Dòng hiển thị Limit sát lại với tên */}
+                            {currentViewMode === "limit" && limitAmt && (
+                              <span className="text-[12px] font-medium text-[#8e8e93] leading-tight">
+                                Limit: ₫{limitAmt.toLocaleString("vi-VN")}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="font-bold text-[15px]">
                           ₫{cat.spent.toLocaleString("vi-VN")}{" "}
@@ -779,7 +801,7 @@ export default function Analytics() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center justify-between gap-4 mt-1">
                         <div className="flex-1 h-1 relative flex items-center">
                           <div
                             className={`absolute inset-0 rounded-full overflow-hidden ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-200"}`}
@@ -853,7 +875,6 @@ export default function Analytics() {
                 <X size={20} />
               </button>
             </div>
-
             <div
               className={`flex rounded-xl p-1 mb-5 w-full ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-gray-200"}`}
             >
@@ -870,7 +891,6 @@ export default function Analytics() {
                 This Month Only
               </button>
             </div>
-
             <div className="flex overflow-x-auto flex-nowrap gap-3 mb-6 pb-2 scrollbar-hide">
               {categories
                 .filter((c) => c.type === typeFilter)
@@ -895,7 +915,6 @@ export default function Analytics() {
                   </button>
                 ))}
             </div>
-
             <div className="relative w-full mb-2">
               <input
                 type="text"
@@ -929,7 +948,6 @@ export default function Analytics() {
                 </button>
               )}
             </div>
-
             <div className="h-6 flex items-center justify-center mb-4">
               {saveLimitSuccess && (
                 <span className="text-[13px] font-medium text-[#8e8e93] animate-ios-fade">
@@ -937,7 +955,6 @@ export default function Analytics() {
                 </span>
               )}
             </div>
-
             <button
               onClick={handleSaveLimit}
               className={`w-full py-4 rounded-2xl font-bold text-[17px] active:scale-[0.98] transition-transform ${theme === "dark" ? "bg-white text-black" : "bg-black text-white"}`}
@@ -994,7 +1011,6 @@ export default function Analytics() {
                 </div>
               </div>
             </div>
-
             <div className="w-full">
               {sortedDetailGroups.map((group) => (
                 <div key={group.date.toISOString()} className="mb-4 w-full">
