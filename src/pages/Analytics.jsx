@@ -176,7 +176,6 @@ export default function Analytics() {
 
   const filteredData = transactions.filter((tItem) => {
     if (tItem.type !== typeFilter || !tItem.date) return false;
-    // Fix iOS Invalid Date Bug
     const d = new Date(tItem.date.replace(" ", "T"));
     return d >= bounds.start && d < bounds.end;
   });
@@ -325,7 +324,6 @@ export default function Analytics() {
   const isCurrentPeriod = offset === 0;
   const now = new Date();
   const daysInCycle = Math.round((bounds.end - bounds.start) / 86400000);
-  // Fix iOS Invalid Date Bug
   const pastData = filteredData.filter(
     (item) => new Date(item.date.replace(" ", "T")) <= now,
   );
@@ -358,7 +356,6 @@ export default function Analytics() {
   const catTotal = catTransactions.reduce((sum, t) => sum + t.amount, 0);
 
   const groupedDetailData = catTransactions.reduce((acc, tran) => {
-    // Fix iOS Invalid Date Bug
     const d = tran.date ? new Date(tran.date.replace(" ", "T")) : new Date();
     d.setHours(0, 0, 0, 0);
     const dateKey = d.toISOString();
@@ -374,7 +371,6 @@ export default function Analytics() {
   const isLimitApplicable = typeFilter === "expense" && timeFilter === "month";
   const currentViewMode = isLimitApplicable ? catViewMode : "percent";
 
-  // Thêm cờ preserveScope để ngăn Safari/iOS làm nhảy nhót UI khi chọn Tháng
   const loadFormForCat = (
     catId,
     mKey = limitMonthKey,
@@ -453,8 +449,6 @@ export default function Analytics() {
         JSON.stringify(newMonthlyLimits),
       );
     } else if (limitScope === "future") {
-      // Fix mạnh mẽ: Không đụng vào Global Limit để tránh làm hỏng quá khứ.
-      // Giải pháp: Dải đạn Local Limit ra 24 tháng liên tục bắt đầu từ tháng Target.
       const newMonthlyLimits = { ...monthlyCatLimits };
       let [year, month] = targetMonthKey.split("-").map(Number);
 
@@ -513,7 +507,6 @@ export default function Analytics() {
   };
 
   const globalGroupedData = filteredData.reduce((acc, tran) => {
-    // Fix iOS Invalid Date Bug
     const d = new Date(tran.date.replace(" ", "T"));
     d.setHours(0, 0, 0, 0);
     const dateKey = d.getTime();
@@ -553,7 +546,6 @@ export default function Analytics() {
       <div
         className={`h-[100dvh] w-full flex flex-col relative overflow-hidden animate-ios-page ${theme === "dark" ? "bg-black text-white" : "bg-[#f2f2f7] text-black"}`}
       >
-        {/* TỐI GIẢN: Bỏ sạch Background rườm rà ở Header */}
         <div
           className={`flex-shrink-0 z-40 px-5 pb-2 pt-1 ${theme === "dark" ? "bg-black/90" : "bg-[#f2f2f7]/90"}`}
           style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
@@ -573,13 +565,15 @@ export default function Analytics() {
                 Income
               </button>
             </div>
+
+            {/* Cập nhật lại bộ lọc Week/Month/Year hiện rõ chữ nhưng vẫn gọn gàng */}
             <div
               className={`flex gap-1 p-1 rounded-full ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-gray-200"}`}
             >
               {[
-                { id: "week", l: "W" },
-                { id: "month", l: "M" },
-                { id: "year", l: "Y" },
+                { id: "week", l: "Week" },
+                { id: "month", l: "Month" },
+                { id: "year", l: "Year" },
               ].map((f) => (
                 <button
                   key={f.id}
@@ -587,7 +581,7 @@ export default function Analytics() {
                     setTimeFilter(f.id);
                     setOffset(0);
                   }}
-                  className={`w-8 h-7 text-[12px] font-bold rounded-full transition-colors flex items-center justify-center ${timeFilter === f.id ? (theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black shadow-sm") : "text-[#8e8e93]"}`}
+                  className={`px-3 py-1.5 text-[12px] font-bold rounded-full transition-colors flex items-center justify-center ${timeFilter === f.id ? (theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black shadow-sm") : "text-[#8e8e93]"}`}
                 >
                   {f.l}
                 </button>
@@ -659,9 +653,9 @@ export default function Analytics() {
           className="flex-1 overflow-y-auto px-5 pt-3 pb-32 overscroll-y-auto scrollbar-hide"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
-          {/* TỐI GIẢN: Gom chung Card Chart và Thông số */}
+          {/* Cập nhật Box: Thêm viền mờ và Shadow */}
           <div
-            className={`rounded-3xl p-5 mb-6 ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-white shadow-sm"}`}
+            className={`rounded-3xl p-5 mb-6 border ${theme === "dark" ? "bg-[#1c1c1e] border-white/5 shadow-md" : "bg-white border-black/5 shadow-[0_4px_12px_rgba(0,0,0,0.03)]"}`}
           >
             <div className="flex justify-between items-end mb-4">
               <div>
@@ -741,7 +735,10 @@ export default function Analytics() {
             )}
           </div>
 
-          <div>
+          {/* Đưa danh sách Category vào Box để không bị tràn viền */}
+          <div
+            className={`rounded-2xl px-5 pt-4 pb-2 border ${theme === "dark" ? "bg-[#1c1c1e] border-white/5 shadow-md" : "bg-white border-black/5 shadow-[0_4px_12px_rgba(0,0,0,0.03)]"}`}
+          >
             <div className="flex justify-between items-center mb-4">
               {isLimitApplicable ? (
                 <>
@@ -775,9 +772,8 @@ export default function Analytics() {
               )}
             </div>
 
-            {/* TỐI GIẢN: Danh sách Category bo tròn tinh tế, không viền cồng kềnh */}
-            <div className="flex flex-col gap-4">
-              {categoryData.map((cat) => {
+            <div className="flex flex-col gap-1">
+              {categoryData.map((cat, idx) => {
                 let displayPercent = cat.percent;
                 let limitAmt = null;
                 let isOver = false;
@@ -797,69 +793,86 @@ export default function Analytics() {
                   <div
                     key={cat.id}
                     onClick={() => openDetail(cat)}
-                    className="cursor-pointer active:opacity-60 transition-opacity"
+                    className="relative py-2.5 cursor-pointer active:opacity-60 transition-opacity"
                   >
-                    <div className="flex justify-between items-center mb-2">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[26px] drop-shadow-sm">
-                          {cat.icon}
-                        </span>
-                        <span className="font-bold text-[16px]">
-                          {cat.name}
-                        </span>
-                      </div>
-                      <div className="text-right flex flex-col justify-center">
-                        <span className="font-bold text-[16px]">
-                          ₫{cat.spent.toLocaleString("vi-VN")}
-                        </span>
-                        {currentViewMode === "limit" && limitAmt && (
-                          <span
-                            className={`text-[12px] font-medium ${isOver ? "text-[#ff453a]" : "text-[#8e8e93]"}`}
-                          >
-                            of ₫{limitAmt.toLocaleString("vi-VN")}
+                    <div
+                      className="absolute left-0 top-3 bottom-6 w-[3px] rounded-r-md"
+                      style={{ backgroundColor: cat.color || "#32ade6" }}
+                    ></div>
+                    <div className="pl-4 pr-1">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <div className="flex items-center gap-3">
+                          <span className="text-[20px]">{cat.icon}</span>
+                          <div className="flex flex-col justify-center">
+                            <span className="font-bold text-[15px] leading-tight">
+                              {cat.name}
+                            </span>
+                            {/* Trả Limit về vị trí ban đầu (dưới tên Category) */}
+                            {currentViewMode === "limit" && limitAmt && (
+                              <span className="text-[12px] font-medium text-[#8e8e93] leading-tight mt-0.5">
+                                Limit: ₫{limitAmt.toLocaleString("vi-VN")}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="font-bold text-[15px]">
+                          ₫{cat.spent.toLocaleString("vi-VN")}{" "}
+                          <span className="text-[#8e8e93] font-normal ml-1 text-lg leading-none">
+                            ›
                           </span>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`flex-1 h-1.5 rounded-full overflow-hidden relative ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-200"}`}
-                      >
-                        {(currentViewMode === "percent" ||
-                          displayPercent !== null) && (
+
+                      <div className="flex items-center justify-between gap-4 mt-1">
+                        {/* Trả thanh Progress và Line trung bình ngày (pacePercent) về như thiết kế gốc */}
+                        <div className="flex-1 h-1 relative flex items-center">
                           <div
-                            className="h-full rounded-full transition-all duration-300"
-                            style={{
-                              width: `${Math.min(displayPercent || 0, 100)}%`,
-                              backgroundColor: cat.color || "#32ade6",
-                            }}
-                          ></div>
-                        )}
-                        {currentViewMode === "limit" &&
-                          limitAmt &&
-                          isCurrentPeriod && (
-                            <div
-                              className={`absolute -top-1 -bottom-1 w-[2px] rounded-full z-10 shadow-sm ${theme === "dark" ? "bg-white" : "bg-black"}`}
-                              style={{
-                                left: `calc(${Math.min(pacePercent, 100)}% - 1px)`,
-                              }}
-                            ></div>
-                          )}
+                            className={`absolute inset-0 rounded-full overflow-hidden ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-200"}`}
+                          >
+                            {(currentViewMode === "percent" ||
+                              displayPercent !== null) && (
+                              <div
+                                className="h-full rounded-full transition-all duration-300"
+                                style={{
+                                  width: `${Math.min(displayPercent || 0, 100)}%`,
+                                  backgroundColor: cat.color || "#32ade6",
+                                }}
+                              ></div>
+                            )}
+                          </div>
+                          {currentViewMode === "limit" &&
+                            limitAmt &&
+                            isCurrentPeriod && (
+                              <div
+                                className={`absolute -top-1 -bottom-1 w-[2px] rounded-full z-10 shadow-sm ${theme === "dark" ? "bg-white" : "bg-black"}`}
+                                style={{
+                                  left: `calc(${Math.min(pacePercent, 100)}% - 1px)`,
+                                }}
+                              ></div>
+                            )}
+                        </div>
+                        <span
+                          className={`text-[12px] font-bold min-w-[32px] text-right ${isOver ? "text-[#ff453a]" : "text-[#8e8e93]"}`}
+                        >
+                          {currentViewMode === "percent"
+                            ? `${Math.round(displayPercent)}%`
+                            : displayPercent !== null
+                              ? `${Math.round(displayPercent)}%`
+                              : "—"}
+                        </span>
                       </div>
-                      <span
-                        className={`text-[12px] font-bold min-w-[36px] text-right ${isOver ? "text-[#ff453a]" : "text-[#8e8e93]"}`}
-                      >
-                        {currentViewMode === "percent" ||
-                        displayPercent !== null
-                          ? `${Math.round(displayPercent)}%`
-                          : "—"}
-                      </span>
                     </div>
+                    {/* Đường Line phân cách giữa các Category */}
+                    {idx !== categoryData.length - 1 && (
+                      <div
+                        className={`absolute bottom-0 left-4 right-1 h-[1px] ${theme === "dark" ? "bg-white/5" : "bg-black/5"}`}
+                      ></div>
+                    )}
                   </div>
                 );
               })}
               {categoryData.length === 0 && (
-                <p className="text-center text-[#8e8e93] pb-4 pt-6 text-sm">
+                <p className="text-center text-[#8e8e93] pb-4 pt-2 text-sm">
                   No data for this period.
                 </p>
               )}
@@ -900,7 +913,6 @@ export default function Analytics() {
                   const newVal = e.target.value;
                   if (newVal) {
                     setLimitMonthKey(newVal);
-                    // Cờ True: Ngăn Safari tự nhảy sang All Time khi blur!
                     if (limitForm.categoryId)
                       loadFormForCat(limitForm.categoryId, newVal, true);
                   }
