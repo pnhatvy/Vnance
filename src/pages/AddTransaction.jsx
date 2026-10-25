@@ -49,7 +49,7 @@ export default function AddTransaction() {
     const now = new Date();
 
     txs.forEach((t) => {
-      const txDate = new Date(t.date);
+      const txDate = new Date(t.date.replace(" ", "T"));
       if (txDate > now) return;
 
       if (

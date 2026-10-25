@@ -176,7 +176,7 @@ export default function Analytics() {
 
   const filteredData = transactions.filter((tItem) => {
     if (tItem.type !== typeFilter || !tItem.date) return false;
-    const d = new Date(tItem.date);
+    const d = new Date(tItem.date.replace(" ", "T"));
     return d >= bounds.start && d < bounds.end;
   });
 
@@ -352,7 +352,7 @@ export default function Analytics() {
   const catTotal = catTransactions.reduce((sum, t) => sum + t.amount, 0);
 
   const groupedDetailData = catTransactions.reduce((acc, tran) => {
-    const d = tran.date ? new Date(tran.date) : new Date();
+    const d = tran.date ? new Date(tran.date.replace(" ", "T")) : new Date();
     d.setHours(0, 0, 0, 0);
     const dateKey = d.toISOString();
     if (!acc[dateKey]) acc[dateKey] = { date: d, items: [], totalDay: 0 };
