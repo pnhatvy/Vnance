@@ -57,18 +57,8 @@ export default function Analytics() {
     const base = new Date();
     let start, end, label, monthKey;
     const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
     ];
 
     if (timeFilter === "week") {
@@ -184,27 +174,12 @@ export default function Analytics() {
     today.setHours(0, 0, 0, 0);
     if (d.getTime() === today.getTime()) return "TODAY";
     const days = [
-      "SUNDAY",
-      "MONDAY",
-      "TUESDAY",
-      "WEDNESDAY",
-      "THURSDAY",
-      "FRIDAY",
-      "SATURDAY",
+      "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY",
+      "THURSDAY", "FRIDAY", "SATURDAY"
     ];
     const months = [
-      "JAN",
-      "FEB",
-      "MAR",
-      "APR",
-      "MAY",
-      "JUN",
-      "JUL",
-      "AUG",
-      "SEP",
-      "OCT",
-      "NOV",
-      "DEC",
+      "JAN", "FEB", "MAR", "APR", "MAY", "JUN", 
+      "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
     ];
     let header = `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
     if (timeFilter === "year") header += `, ${d.getFullYear()}`;
@@ -223,12 +198,8 @@ export default function Analytics() {
   useEffect(() => {
     const container = detailContainerRef.current;
     if (!container || !showDetail) return;
-    let startY = 0,
-      startX = 0,
-      currentY = 0;
-    let isDragging = false,
-      isClosing = false,
-      dragDirection = null;
+    let startY = 0, startX = 0, currentY = 0;
+    let isDragging = false, isClosing = false, dragDirection = null;
     let rafId = null;
 
     const handleTouchStart = (e) => {
@@ -249,11 +220,7 @@ export default function Analytics() {
         else dragDirection = "vertical";
       }
       if (dragDirection === "horizontal") return;
-      if (
-        dragDirection === "vertical" &&
-        diffY > 0 &&
-        container.scrollTop <= 0
-      ) {
+      if (dragDirection === "vertical" && diffY > 0 && container.scrollTop <= 0) {
         e.preventDefault();
         currentY = diffY;
         if (rafId) cancelAnimationFrame(rafId);
@@ -282,12 +249,8 @@ export default function Analytics() {
       }
     };
 
-    container.addEventListener("touchstart", handleTouchStart, {
-      passive: false,
-    });
-    container.addEventListener("touchmove", handleTouchMove, {
-      passive: false,
-    });
+    container.addEventListener("touchstart", handleTouchStart, { passive: false });
+    container.addEventListener("touchmove", handleTouchMove, { passive: false });
     container.addEventListener("touchend", handleTouchEnd);
 
     return () => {
@@ -328,14 +291,12 @@ export default function Analytics() {
   const totalAmountPast = pastData.reduce((sum, item) => sum + item.amount, 0);
   const futureDataTotal = totalAmount - totalAmountPast;
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const periodStart = new Date(
-    bounds.start.getFullYear(),
-    bounds.start.getMonth(),
-    bounds.start.getDate(),
-  );
+  const periodStart = new Date(bounds.start.getFullYear(), bounds.start.getMonth(), bounds.start.getDate());
+  
   let daysPassed = Math.round((todayStart - periodStart) / 86400000) + 1;
   if (daysPassed > daysInCycle) daysPassed = daysInCycle;
   if (daysPassed < 1) daysPassed = 1;
+  
   const dailyAverage = totalAmountPast / daysPassed;
   const onPaceFor = isCurrentPeriod
     ? dailyAverage * daysInCycle + futureDataTotal
@@ -369,6 +330,7 @@ export default function Analytics() {
     const currentMonthKey = bounds.monthKey;
     const localLimit = monthlyCatLimits[currentMonthKey]?.[catId];
     const globalLimit = catLimits[catId];
+    
     if (localLimit !== undefined) {
       setLimitForm({
         categoryId: catId,
@@ -408,10 +370,7 @@ export default function Analytics() {
       const newGlobalLimits = { ...catLimits };
       delete newGlobalLimits[limitForm.categoryId];
       setCatLimits(newGlobalLimits);
-      localStorage.setItem(
-        "vys_category_limits",
-        JSON.stringify(newGlobalLimits),
-      );
+      localStorage.setItem("vys_category_limits", JSON.stringify(newGlobalLimits));
 
       const newMonthlyLimits = { ...monthlyCatLimits };
       if (newMonthlyLimits[currentMonthKey]) {
@@ -419,29 +378,36 @@ export default function Analytics() {
         if (Object.keys(newMonthlyLimits[currentMonthKey]).length === 0)
           delete newMonthlyLimits[currentMonthKey];
         setMonthlyCatLimits(newMonthlyLimits);
-        localStorage.setItem(
-          "vys_monthly_category_limits",
-          JSON.stringify(newMonthlyLimits),
-        );
+        localStorage.setItem("vys_monthly_category_limits", JSON.stringify(newMonthlyLimits));
       }
     } else if (limitScope === "month") {
       const newMonthlyLimits = { ...monthlyCatLimits };
-      if (!newMonthlyLimits[currentMonthKey])
-        newMonthlyLimits[currentMonthKey] = {};
+      if (!newMonthlyLimits[currentMonthKey]) newMonthlyLimits[currentMonthKey] = {};
       newMonthlyLimits[currentMonthKey][limitForm.categoryId] = numericAmount;
       setMonthlyCatLimits(newMonthlyLimits);
-      localStorage.setItem(
-        "vys_monthly_category_limits",
-        JSON.stringify(newMonthlyLimits),
-      );
+      localStorage.setItem("vys_monthly_category_limits", JSON.stringify(newMonthlyLimits));
+    } else if (limitScope === "future") {
+      const newGlobalLimits = { ...catLimits };
+      newGlobalLimits[limitForm.categoryId] = numericAmount;
+      setCatLimits(newGlobalLimits);
+      localStorage.setItem("vys_category_limits", JSON.stringify(newGlobalLimits));
+
+      const newMonthlyLimits = { ...monthlyCatLimits };
+      Object.keys(newMonthlyLimits).forEach((mKey) => {
+        if (mKey >= currentMonthKey) {
+          delete newMonthlyLimits[mKey][limitForm.categoryId];
+          if (Object.keys(newMonthlyLimits[mKey]).length === 0) {
+            delete newMonthlyLimits[mKey];
+          }
+        }
+      });
+      setMonthlyCatLimits(newMonthlyLimits);
+      localStorage.setItem("vys_monthly_category_limits", JSON.stringify(newMonthlyLimits));
     } else {
       const newGlobalLimits = { ...catLimits };
       newGlobalLimits[limitForm.categoryId] = numericAmount;
       setCatLimits(newGlobalLimits);
-      localStorage.setItem(
-        "vys_category_limits",
-        JSON.stringify(newGlobalLimits),
-      );
+      localStorage.setItem("vys_category_limits", JSON.stringify(newGlobalLimits));
 
       const newMonthlyLimits = { ...monthlyCatLimits };
       if (
@@ -452,10 +418,7 @@ export default function Analytics() {
         if (Object.keys(newMonthlyLimits[currentMonthKey]).length === 0)
           delete newMonthlyLimits[currentMonthKey];
         setMonthlyCatLimits(newMonthlyLimits);
-        localStorage.setItem(
-          "vys_monthly_category_limits",
-          JSON.stringify(newMonthlyLimits),
-        );
+        localStorage.setItem("vys_monthly_category_limits", JSON.stringify(newMonthlyLimits));
       }
     }
     setSaveLimitSuccess(true);
@@ -470,9 +433,9 @@ export default function Analytics() {
       : parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
-  // Sparkline data calculation from ALL filteredData
+  // Sparkline data calculation Fix: Tính toàn bộ các ngày có trong khung thời gian
   const globalGroupedData = filteredData.reduce((acc, tran) => {
-    const d = tran.date ? new Date(tran.date) : new Date();
+    const d = new Date(tran.date);
     d.setHours(0, 0, 0, 0);
     const dateKey = d.getTime();
     if (!acc[dateKey]) acc[dateKey] = 0;
@@ -480,10 +443,17 @@ export default function Analytics() {
     return acc;
   }, {});
 
-  const sortedGlobalKeys = Object.keys(globalGroupedData).sort(
-    (a, b) => Number(a) - Number(b),
-  );
-  const sparklineData = sortedGlobalKeys.map((k) => globalGroupedData[k]);
+  const sparklineData = [];
+  const iterDate = new Date(bounds.start);
+  iterDate.setHours(0, 0, 0, 0);
+  
+  const endIterDate = isCurrentPeriod ? new Date() : new Date(bounds.end);
+  if (isCurrentPeriod) endIterDate.setHours(23, 59, 59, 999);
+
+  while (iterDate <= endIterDate) {
+    sparklineData.push(globalGroupedData[iterDate.getTime()] || 0);
+    iterDate.setDate(iterDate.getDate() + 1);
+  }
 
   let sparklinePoints = "";
   if (sparklineData.length > 1) {
@@ -785,7 +755,6 @@ export default function Analytics() {
                             <span className="font-bold text-[15px] leading-tight">
                               {cat.name}
                             </span>
-                            {/* Dòng hiển thị Limit sát lại với tên */}
                             {currentViewMode === "limit" && limitAmt && (
                               <span className="text-[12px] font-medium text-[#8e8e93] leading-tight">
                                 Limit: ₫{limitAmt.toLocaleString("vi-VN")}
@@ -875,22 +844,30 @@ export default function Analytics() {
                 <X size={20} />
               </button>
             </div>
+            
             <div
               className={`flex rounded-xl p-1 mb-5 w-full ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-gray-200"}`}
             >
               <button
                 onClick={() => setLimitScope("all")}
-                className={`flex-1 py-1.5 text-[13px] font-bold rounded-lg transition-colors duration-200 ${limitScope === "all" ? (theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black shadow-sm") : theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
+                className={`flex-1 py-1.5 text-[12px] font-bold rounded-lg transition-colors duration-200 ${limitScope === "all" ? (theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black shadow-sm") : theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
               >
-                All Months
+                All Time
               </button>
               <button
                 onClick={() => setLimitScope("month")}
-                className={`flex-1 py-1.5 text-[13px] font-bold rounded-lg transition-colors duration-200 ${limitScope === "month" ? (theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black shadow-sm") : theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
+                className={`flex-1 py-1.5 text-[12px] font-bold rounded-lg transition-colors duration-200 ${limitScope === "month" ? (theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black shadow-sm") : theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
               >
-                This Month Only
+                This Month
+              </button>
+              <button
+                onClick={() => setLimitScope("future")}
+                className={`flex-1 py-1.5 text-[12px] font-bold rounded-lg transition-colors duration-200 ${limitScope === "future" ? (theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black shadow-sm") : theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
+              >
+                This & Future
               </button>
             </div>
+
             <div className="flex overflow-x-auto flex-nowrap gap-3 mb-6 pb-2 scrollbar-hide">
               {categories
                 .filter((c) => c.type === typeFilter)

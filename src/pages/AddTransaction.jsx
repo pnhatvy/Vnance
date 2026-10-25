@@ -11,6 +11,7 @@ export default function AddTransaction() {
   const [type, setType] = useState("expense");
   const [note, setNote] = useState("");
   const [repeat, setRepeat] = useState("none");
+  const [isSaving, setIsSaving] = useState(false);
 
   const [pastNotes, setPastNotes] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
@@ -47,7 +48,6 @@ export default function AddTransaction() {
 
     txs.forEach((t) => {
       const txDate = new Date(t.date);
-      // Bỏ qua các giao dịch repeat trong tương lai
       if (txDate > now) return;
 
       if (
@@ -229,50 +229,56 @@ export default function AddTransaction() {
 
   const handleSave = () => {
     if (amount === "0" || amount === ",") return;
-    try {
-      const numericAmount = Number(amount.replace(",", "."));
-      const baseDate = new Date(`${datePart}T${timePart}`);
+    
+    setIsSaving(true);
+    
+    setTimeout(() => {
+      try {
+        const numericAmount = Number(amount.replace(",", "."));
+        const baseDate = new Date(`${datePart}T${timePart}`);
 
-      let count = 1;
-      if (repeat === "daily") count = 365;
-      if (repeat === "weekly") count = 104;
-      if (repeat === "monthly") count = 60;
-      if (repeat === "yearly") count = 10;
+        let count = 1;
+        if (repeat === "daily") count = 365;
+        if (repeat === "weekly") count = 104;
+        if (repeat === "monthly") count = 60;
+        if (repeat === "yearly") count = 10;
 
-      const newTransactions = [];
-      const groupId = "rep_" + Date.now();
-      const existingData = JSON.parse(
-        localStorage.getItem("vys_transactions") || "[]",
-      );
+        const newTransactions = [];
+        const groupId = "rep_" + Date.now();
+        const existingData = JSON.parse(
+          localStorage.getItem("vys_transactions") || "[]",
+        );
 
-      for (let i = 0; i < count; i++) {
-        const d = new Date(baseDate);
-        if (repeat === "daily") d.setDate(d.getDate() + i);
-        if (repeat === "weekly") d.setDate(d.getDate() + i * 7);
-        if (repeat === "monthly") d.setMonth(d.getMonth() + i);
-        if (repeat === "yearly") d.setFullYear(d.getFullYear() + i);
+        for (let i = 0; i < count; i++) {
+          const d = new Date(baseDate);
+          if (repeat === "daily") d.setDate(d.getDate() + i);
+          if (repeat === "weekly") d.setDate(d.getDate() + i * 7);
+          if (repeat === "monthly") d.setMonth(d.getMonth() + i);
+          if (repeat === "yearly") d.setFullYear(d.getFullYear() + i);
 
-        newTransactions.push({
-          id: Date.now().toString() + "_" + i,
-          amount: numericAmount,
-          type: type,
-          note:
-            note ||
-            category.name ||
-            (type === "expense" ? "Expense" : "Income"),
-          category: category,
-          date: d.toISOString(),
-          recurringId: repeat !== "none" ? groupId : null,
-          repeatMode: repeat !== "none" ? repeat : null,
-        });
+          newTransactions.push({
+            id: Date.now().toString() + "_" + i,
+            amount: numericAmount,
+            type: type,
+            note:
+              note ||
+              category.name ||
+              (type === "expense" ? "Expense" : "Income"),
+            category: category,
+            date: d.toISOString(),
+            recurringId: repeat !== "none" ? groupId : null,
+            repeatMode: repeat !== "none" ? repeat : null,
+          });
+        }
+
+        const updated = [...newTransactions, ...existingData];
+        localStorage.setItem("vys_transactions", JSON.stringify(updated));
+        navigate("/");
+      } catch (e) {
+        console.error(e);
+        setIsSaving(false);
       }
-
-      const updated = [...newTransactions, ...existingData];
-      localStorage.setItem("vys_transactions", JSON.stringify(updated));
-      navigate("/");
-    } catch (e) {
-      console.error(e);
-    }
+    }, 450);
   };
 
   const displayAmount = () => {
@@ -411,10 +417,10 @@ export default function AddTransaction() {
                       e.stopPropagation();
                       acceptSuggestion(s);
                     }}
-                    className={`px-3.5 py-2 rounded-full text-[13px] font-medium shadow-sm active:scale-95 transition-transform flex items-center gap-1.5 flex-shrink-0 max-w-[160px] ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black border border-gray-200"}`}
+                    className={`px-3.5 py-2 rounded-full text-[13px] font-medium shadow-sm active:scale-95 transition-transform flex items-center gap-1.5 flex-shrink-0 ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black border border-gray-200"}`}
                   >
                     <span>{s.category?.icon}</span>
-                    <span className="truncate">{s.note}</span>
+                    <span>{s.note}</span>
                   </button>
                 ))}
               </div>
@@ -532,9 +538,9 @@ export default function AddTransaction() {
           e.stopPropagation();
           handleSave();
         }}
-        className={`w-full py-3.5 rounded-full font-bold text-[17px] active:scale-[0.98] transition-transform flex-shrink-0 ${theme === "dark" ? "bg-white text-black" : "bg-black text-white"}`}
+        className={`w-full py-3.5 rounded-full font-bold text-[17px] transition-all duration-300 flex items-center justify-center gap-2 flex-shrink-0 ${isSaving ? "bg-[#32d74b] text-white scale-95" : theme === "dark" ? "bg-white text-black active:scale-[0.98]" : "bg-black text-white active:scale-[0.98]"}`}
       >
-        Save
+        {isSaving ? "Saved ✓" : "Save"}
       </button>
     </div>
   );
