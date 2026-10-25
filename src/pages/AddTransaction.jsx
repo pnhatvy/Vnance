@@ -11,13 +11,17 @@ export default function AddTransaction() {
   const [type, setType] = useState("expense");
   const [note, setNote] = useState("");
   const [repeat, setRepeat] = useState("none");
-  const [isSaving, setIsSaving] = useState(false);
+
+  // Trạng thái hiệu ứng Save
+  const [saveState, setSaveState] = useState(0);
+  const [rect, setRect] = useState(null);
 
   const [pastNotes, setPastNotes] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
 
   const containerRef = useRef(null);
   const categoryListRef = useRef(null);
+  const buttonRef = useRef(null);
 
   const getCurrentDate = () => {
     const now = new Date();
@@ -227,58 +231,91 @@ export default function AddTransaction() {
     else setAmount(amount.slice(0, -1));
   };
 
+  const performSave = () => {
+    try {
+      const numericAmount = Number(amount.replace(",", "."));
+      const baseDate = new Date(`${datePart}T${timePart}`);
+
+      let count = 1;
+      if (repeat === "daily") count = 365;
+      if (repeat === "weekly") count = 104;
+      if (repeat === "monthly") count = 60;
+      if (repeat === "yearly") count = 10;
+
+      const newTransactions = [];
+      const groupId = "rep_" + Date.now();
+      const existingData = JSON.parse(
+        localStorage.getItem("vys_transactions") || "[]",
+      );
+
+      for (let i = 0; i < count; i++) {
+        const d = new Date(baseDate);
+        if (repeat === "daily") d.setDate(d.getDate() + i);
+        if (repeat === "weekly") d.setDate(d.getDate() + i * 7);
+        if (repeat === "monthly") d.setMonth(d.getMonth() + i);
+        if (repeat === "yearly") d.setFullYear(d.getFullYear() + i);
+
+        newTransactions.push({
+          id: Date.now().toString() + "_" + i,
+          amount: numericAmount,
+          type: type,
+          note:
+            note ||
+            category.name ||
+            (type === "expense" ? "Expense" : "Income"),
+          category: category,
+          date: d.toISOString(),
+          recurringId: repeat !== "none" ? groupId : null,
+          repeatMode: repeat !== "none" ? repeat : null,
+        });
+      }
+
+      const updated = [...newTransactions, ...existingData];
+      localStorage.setItem("vys_transactions", JSON.stringify(updated));
+      navigate("/");
+    } catch (e) {
+      console.error(e);
+      setSaveState(0);
+    }
+  };
+
   const handleSave = () => {
     if (amount === "0" || amount === ",") return;
-    
-    setIsSaving(true);
-    
+
+    // 1. Chốt tọa độ nút bấm hiện tại để tạo hiệu ứng không bị giật
+    const btnRect = buttonRef.current.getBoundingClientRect();
+    setRect({
+      top: btnRect.top,
+      left: btnRect.left,
+      width: btnRect.width,
+      height: btnRect.height,
+    });
+
+    setSaveState(1);
+
+    // 2. Chuyển sang hiệu ứng bay ra giữa và xoay sau 1 frame
     setTimeout(() => {
-      try {
-        const numericAmount = Number(amount.replace(",", "."));
-        const baseDate = new Date(`${datePart}T${timePart}`);
+      setSaveState(2);
 
-        let count = 1;
-        if (repeat === "daily") count = 365;
-        if (repeat === "weekly") count = 104;
-        if (repeat === "monthly") count = 60;
-        if (repeat === "yearly") count = 10;
+      // 3. Chờ hiệu ứng bay xong, bắt đầu thu nhỏ biến mất
+      setTimeout(() => {
+        setSaveState(3);
 
-        const newTransactions = [];
-        const groupId = "rep_" + Date.now();
-        const existingData = JSON.parse(
-          localStorage.getItem("vys_transactions") || "[]",
-        );
+        // 4. Khi nút đã tàng hình, kích hoạt animation đóng trang trượt xuống
+        setTimeout(() => {
+          if (containerRef.current) {
+            containerRef.current.style.transition =
+              "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)";
+            containerRef.current.style.transform = `translate3d(0, 100dvh, 0)`;
+          }
 
-        for (let i = 0; i < count; i++) {
-          const d = new Date(baseDate);
-          if (repeat === "daily") d.setDate(d.getDate() + i);
-          if (repeat === "weekly") d.setDate(d.getDate() + i * 7);
-          if (repeat === "monthly") d.setMonth(d.getMonth() + i);
-          if (repeat === "yearly") d.setFullYear(d.getFullYear() + i);
-
-          newTransactions.push({
-            id: Date.now().toString() + "_" + i,
-            amount: numericAmount,
-            type: type,
-            note:
-              note ||
-              category.name ||
-              (type === "expense" ? "Expense" : "Income"),
-            category: category,
-            date: d.toISOString(),
-            recurringId: repeat !== "none" ? groupId : null,
-            repeatMode: repeat !== "none" ? repeat : null,
-          });
-        }
-
-        const updated = [...newTransactions, ...existingData];
-        localStorage.setItem("vys_transactions", JSON.stringify(updated));
-        navigate("/");
-      } catch (e) {
-        console.error(e);
-        setIsSaving(false);
-      }
-    }, 450);
+          // 5. Kết thúc animation, lưu data và navigate về trang chủ
+          setTimeout(() => {
+            performSave();
+          }, 400);
+        }, 300);
+      }, 800);
+    }, 20);
   };
 
   const displayAmount = () => {
@@ -295,6 +332,44 @@ export default function AddTransaction() {
     const hours = (numericAmount / workHourlyRate).toFixed(1);
     return hours > 0 ? hours : null;
   };
+
+  let dynamicStyle = {};
+  if (saveState >= 1 && rect) {
+    dynamicStyle = {
+      position: "fixed",
+      zIndex: 100,
+      top: saveState === 1 ? `${rect.top}px` : "50%",
+      left: saveState === 1 ? `${rect.left}px` : "50%",
+      width: saveState === 1 ? `${rect.width}px` : "72px",
+      height: saveState === 1 ? `${rect.height}px` : "72px",
+      transform:
+        saveState === 1
+          ? "none"
+          : saveState === 2
+            ? "translate(-50%, -50%) rotate(360deg)"
+            : "translate(-50%, -50%) rotate(360deg) scale(0)",
+      opacity: saveState === 3 ? 0 : 1,
+      backgroundColor:
+        saveState === 1
+          ? theme === "dark"
+            ? "#ffffff"
+            : "#000000"
+          : "#32d74b",
+      color:
+        saveState === 1
+          ? theme === "dark"
+            ? "#000000"
+            : "#ffffff"
+          : "#ffffff",
+      borderRadius: saveState === 1 ? "9999px" : "50%",
+      transition:
+        saveState === 1
+          ? "none"
+          : saveState === 2
+            ? "all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)"
+            : "all 0.4s cubic-bezier(0.32, 0.72, 0, 1)",
+    };
+  }
 
   return (
     <div
@@ -533,14 +608,50 @@ export default function AddTransaction() {
         </button>
       </div>
 
+      {/* Dùng một div chêm vào để layout không bị giật khi nút Save tách ra làm position fixed */}
+      {saveState >= 1 && (
+        <div
+          style={{ width: rect?.width, height: rect?.height }}
+          className="flex-shrink-0"
+        />
+      )}
+
       <button
+        ref={buttonRef}
         onClick={(e) => {
           e.stopPropagation();
-          handleSave();
+          if (saveState === 0) handleSave();
         }}
-        className={`w-full py-3.5 rounded-full font-bold text-[17px] transition-all duration-300 flex items-center justify-center gap-2 flex-shrink-0 ${isSaving ? "bg-[#32d74b] text-white scale-95" : theme === "dark" ? "bg-white text-black active:scale-[0.98]" : "bg-black text-white active:scale-[0.98]"}`}
+        style={saveState >= 1 ? dynamicStyle : undefined}
+        className={
+          saveState === 0
+            ? `w-full py-3.5 rounded-full font-bold text-[17px] relative overflow-hidden flex-shrink-0 transition-transform active:scale-[0.98] ${theme === "dark" ? "bg-white text-black" : "bg-black text-white"}`
+            : `flex items-center justify-center overflow-hidden`
+        }
       >
-        {isSaving ? "Saved ✓" : "Save"}
+        <div
+          className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${saveState === 0 ? "opacity-100" : "opacity-0"}`}
+        >
+          Save
+        </div>
+
+        <div
+          className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 delay-100 ${saveState >= 2 ? "opacity-100" : "opacity-0"}`}
+        >
+          <svg
+            className="w-8 h-8 text-white"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={3}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        </div>
       </button>
     </div>
   );
