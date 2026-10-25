@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Delete, Calendar, Repeat, Clock, Timer } from "lucide-react";
+import { X, Delete, Calendar, Repeat, Clock, Timer, Check } from "lucide-react";
 import { useAppContext } from "../AppContext";
 
 export default function AddTransaction() {
@@ -12,16 +12,14 @@ export default function AddTransaction() {
   const [note, setNote] = useState("");
   const [repeat, setRepeat] = useState("none");
 
-  // Trạng thái hiệu ứng Save
-  const [saveState, setSaveState] = useState(0);
-  const [rect, setRect] = useState(null);
+  // Trạng thái: "idle" | "scanning" | "success"
+  const [saveState, setSaveState] = useState("idle");
 
   const [pastNotes, setPastNotes] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
 
   const containerRef = useRef(null);
   const categoryListRef = useRef(null);
-  const buttonRef = useRef(null);
 
   const getCurrentDate = () => {
     const now = new Date();
@@ -125,19 +123,16 @@ export default function AddTransaction() {
     const handleTouchStart = (e) => {
       if (container.scrollTop > 0) return;
       if (isClosing) return;
-
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
       isDragging = true;
       dragDirection = null;
-
       container.style.transition = "none";
       container.style.animation = "none";
     };
 
     const handleTouchMove = (e) => {
       if (!isDragging || isClosing) return;
-
       const diffX = e.touches[0].clientX - startX;
       const diffY = e.touches[0].clientY - startY;
 
@@ -275,47 +270,34 @@ export default function AddTransaction() {
       navigate("/");
     } catch (e) {
       console.error(e);
-      setSaveState(0);
+      setSaveState("idle");
     }
   };
 
   const handleSave = () => {
     if (amount === "0" || amount === ",") return;
 
-    // 1. Chốt tọa độ nút bấm hiện tại để tạo hiệu ứng không bị giật
-    const btnRect = buttonRef.current.getBoundingClientRect();
-    setRect({
-      top: btnRect.top,
-      left: btnRect.left,
-      width: btnRect.width,
-      height: btnRect.height,
-    });
+    // 1. Kích hoạt hiệu ứng quay Loading
+    setSaveState("scanning");
 
-    setSaveState(1);
-
-    // 2. Chuyển sang hiệu ứng bay ra giữa và xoay sau 1 frame
+    // 2. Chuyển sang Dấu Check thành công sau 0.6 giây
     setTimeout(() => {
-      setSaveState(2);
+      setSaveState("success");
 
-      // 3. Chờ hiệu ứng bay xong, bắt đầu thu nhỏ biến mất
+      // 3. Giữ dấu tick 0.7 giây rồi trượt modal xuống
       setTimeout(() => {
-        setSaveState(3);
+        if (containerRef.current) {
+          containerRef.current.style.transition =
+            "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)";
+          containerRef.current.style.transform = `translate3d(0, 100dvh, 0)`;
+        }
 
-        // 4. Khi nút đã tàng hình, kích hoạt animation đóng trang trượt xuống
+        // 4. Lưu data và redirect
         setTimeout(() => {
-          if (containerRef.current) {
-            containerRef.current.style.transition =
-              "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)";
-            containerRef.current.style.transform = `translate3d(0, 100dvh, 0)`;
-          }
-
-          // 5. Kết thúc animation, lưu data và navigate về trang chủ
-          setTimeout(() => {
-            performSave();
-          }, 400);
-        }, 300);
-      }, 800);
-    }, 20);
+          performSave();
+        }, 400);
+      }, 700);
+    }, 600);
   };
 
   const displayAmount = () => {
@@ -332,44 +314,6 @@ export default function AddTransaction() {
     const hours = (numericAmount / workHourlyRate).toFixed(1);
     return hours > 0 ? hours : null;
   };
-
-  let dynamicStyle = {};
-  if (saveState >= 1 && rect) {
-    dynamicStyle = {
-      position: "fixed",
-      zIndex: 100,
-      top: saveState === 1 ? `${rect.top}px` : "50%",
-      left: saveState === 1 ? `${rect.left}px` : "50%",
-      width: saveState === 1 ? `${rect.width}px` : "72px",
-      height: saveState === 1 ? `${rect.height}px` : "72px",
-      transform:
-        saveState === 1
-          ? "none"
-          : saveState === 2
-            ? "translate(-50%, -50%) rotate(360deg)"
-            : "translate(-50%, -50%) rotate(360deg) scale(0)",
-      opacity: saveState === 3 ? 0 : 1,
-      backgroundColor:
-        saveState === 1
-          ? theme === "dark"
-            ? "#ffffff"
-            : "#000000"
-          : "#32d74b",
-      color:
-        saveState === 1
-          ? theme === "dark"
-            ? "#000000"
-            : "#ffffff"
-          : "#ffffff",
-      borderRadius: saveState === 1 ? "9999px" : "50%",
-      transition:
-        saveState === 1
-          ? "none"
-          : saveState === 2
-            ? "all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)"
-            : "all 0.4s cubic-bezier(0.32, 0.72, 0, 1)",
-    };
-  }
 
   return (
     <div
@@ -608,50 +552,70 @@ export default function AddTransaction() {
         </button>
       </div>
 
-      {/* Dùng một div chêm vào để layout không bị giật khi nút Save tách ra làm position fixed */}
-      {saveState >= 1 && (
-        <div
-          style={{ width: rect?.width, height: rect?.height }}
-          className="flex-shrink-0"
-        />
-      )}
-
+      {/* APPLE FACE-ID STYLE BUTTON */}
       <button
-        ref={buttonRef}
         onClick={(e) => {
           e.stopPropagation();
-          if (saveState === 0) handleSave();
+          if (saveState === "idle") handleSave();
         }}
-        style={saveState >= 1 ? dynamicStyle : undefined}
-        className={
-          saveState === 0
-            ? `w-full py-3.5 rounded-full font-bold text-[17px] relative overflow-hidden flex-shrink-0 transition-transform active:scale-[0.98] ${theme === "dark" ? "bg-white text-black" : "bg-black text-white"}`
-            : `flex items-center justify-center overflow-hidden`
-        }
+        className={`relative w-full h-[54px] rounded-full font-bold text-[17px] transition-colors duration-300 flex items-center justify-center flex-shrink-0 overflow-hidden
+        ${saveState !== "idle" ? "pointer-events-none" : "active:scale-[0.98] transition-transform"}
+        ${
+          saveState === "success"
+            ? "bg-[#32d74b] text-white"
+            : theme === "dark"
+              ? "bg-white text-black"
+              : "bg-black text-white"
+        }`}
       >
-        <div
-          className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${saveState === 0 ? "opacity-100" : "opacity-0"}`}
+        {/* 1. Chữ "Save" gốc */}
+        <span
+          className={`absolute inset-0 flex items-center justify-center transition-all duration-300 
+          ${saveState === "idle" ? "opacity-100 scale-100" : "opacity-0 scale-75"}`}
         >
           Save
-        </div>
+        </span>
 
-        <div
-          className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 delay-100 ${saveState >= 2 ? "opacity-100" : "opacity-0"}`}
+        {/* 2. Hiệu ứng quét Spinner mượt */}
+        <span
+          className={`absolute inset-0 flex items-center justify-center transition-all duration-300 
+          ${saveState === "scanning" ? "opacity-100 scale-100" : "opacity-0 scale-50"}`}
         >
           <svg
-            className="w-8 h-8 text-white"
+            className="w-6 h-6 text-current animate-spin"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
-            strokeWidth={3}
           >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="3"
+            ></circle>
             <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M5 13l4 4L19 7"
-            />
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
           </svg>
-        </div>
+        </span>
+
+        {/* 3. Dấu Checkmark thành công nảy bung */}
+        <span
+          className={`absolute inset-0 flex items-center justify-center transition-all duration-500 delay-75 
+          ${saveState === "success" ? "opacity-100 scale-100" : "opacity-0 scale-[0.2]"}`}
+          style={{
+            transitionTimingFunction:
+              saveState === "success"
+                ? "cubic-bezier(0.34, 1.56, 0.64, 1)"
+                : "ease",
+          }}
+        >
+          <Check size={28} strokeWidth={3.5} className="text-white" />
+        </span>
       </button>
     </div>
   );
