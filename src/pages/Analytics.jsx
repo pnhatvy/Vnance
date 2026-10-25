@@ -17,6 +17,7 @@ export default function Analytics() {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [limitScope, setLimitScope] = useState("all");
   const [limitForm, setLimitForm] = useState({ categoryId: null, amount: "0" });
+  const [limitMonthKey, setLimitMonthKey] = useState("");
   const [saveLimitSuccess, setSaveLimitSuccess] = useState(false);
   const [, setGoalsTrigger] = useState(0);
   const rawDataRef = useRef({ tx: "", goals: "", limits: "", mLimits: "" });
@@ -57,8 +58,18 @@ export default function Analytics() {
     const base = new Date();
     let start, end, label, monthKey;
     const months = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
     ];
 
     if (timeFilter === "week") {
@@ -174,12 +185,27 @@ export default function Analytics() {
     today.setHours(0, 0, 0, 0);
     if (d.getTime() === today.getTime()) return "TODAY";
     const days = [
-      "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY",
-      "THURSDAY", "FRIDAY", "SATURDAY"
+      "SUNDAY",
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
     ];
     const months = [
-      "JAN", "FEB", "MAR", "APR", "MAY", "JUN", 
-      "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
+      "JAN",
+      "FEB",
+      "MAR",
+      "APR",
+      "MAY",
+      "JUN",
+      "JUL",
+      "AUG",
+      "SEP",
+      "OCT",
+      "NOV",
+      "DEC",
     ];
     let header = `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
     if (timeFilter === "year") header += `, ${d.getFullYear()}`;
@@ -198,8 +224,12 @@ export default function Analytics() {
   useEffect(() => {
     const container = detailContainerRef.current;
     if (!container || !showDetail) return;
-    let startY = 0, startX = 0, currentY = 0;
-    let isDragging = false, isClosing = false, dragDirection = null;
+    let startY = 0,
+      startX = 0,
+      currentY = 0;
+    let isDragging = false,
+      isClosing = false,
+      dragDirection = null;
     let rafId = null;
 
     const handleTouchStart = (e) => {
@@ -220,7 +250,11 @@ export default function Analytics() {
         else dragDirection = "vertical";
       }
       if (dragDirection === "horizontal") return;
-      if (dragDirection === "vertical" && diffY > 0 && container.scrollTop <= 0) {
+      if (
+        dragDirection === "vertical" &&
+        diffY > 0 &&
+        container.scrollTop <= 0
+      ) {
         e.preventDefault();
         currentY = diffY;
         if (rafId) cancelAnimationFrame(rafId);
@@ -249,8 +283,12 @@ export default function Analytics() {
       }
     };
 
-    container.addEventListener("touchstart", handleTouchStart, { passive: false });
-    container.addEventListener("touchmove", handleTouchMove, { passive: false });
+    container.addEventListener("touchstart", handleTouchStart, {
+      passive: false,
+    });
+    container.addEventListener("touchmove", handleTouchMove, {
+      passive: false,
+    });
     container.addEventListener("touchend", handleTouchEnd);
 
     return () => {
@@ -291,12 +329,16 @@ export default function Analytics() {
   const totalAmountPast = pastData.reduce((sum, item) => sum + item.amount, 0);
   const futureDataTotal = totalAmount - totalAmountPast;
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const periodStart = new Date(bounds.start.getFullYear(), bounds.start.getMonth(), bounds.start.getDate());
-  
+  const periodStart = new Date(
+    bounds.start.getFullYear(),
+    bounds.start.getMonth(),
+    bounds.start.getDate(),
+  );
+
   let daysPassed = Math.round((todayStart - periodStart) / 86400000) + 1;
   if (daysPassed > daysInCycle) daysPassed = daysInCycle;
   if (daysPassed < 1) daysPassed = 1;
-  
+
   const dailyAverage = totalAmountPast / daysPassed;
   const onPaceFor = isCurrentPeriod
     ? dailyAverage * daysInCycle + futureDataTotal
@@ -325,12 +367,11 @@ export default function Analytics() {
   const isLimitApplicable = typeFilter === "expense" && timeFilter === "month";
   const currentViewMode = isLimitApplicable ? catViewMode : "percent";
 
-  const loadFormForCat = (catId) => {
+  const loadFormForCat = (catId, mKey = limitMonthKey) => {
     setSaveLimitSuccess(false);
-    const currentMonthKey = bounds.monthKey;
-    const localLimit = monthlyCatLimits[currentMonthKey]?.[catId];
+    const localLimit = monthlyCatLimits[mKey]?.[catId];
     const globalLimit = catLimits[catId];
-    
+
     if (localLimit !== undefined) {
       setLimitForm({
         categoryId: catId,
@@ -351,8 +392,14 @@ export default function Analytics() {
 
   const openLimitModal = () => {
     setSaveLimitSuccess(false);
+    let mKey = bounds.monthKey;
+    if (!mKey) {
+      const d = new Date();
+      mKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}`;
+    }
+    setLimitMonthKey(mKey);
     const activeCats = categories.filter((c) => c.type === typeFilter);
-    if (activeCats.length > 0) loadFormForCat(activeCats[0].id);
+    if (activeCats.length > 0) loadFormForCat(activeCats[0].id, mKey);
     setShowLimitModal(true);
   };
 
@@ -364,37 +411,50 @@ export default function Analytics() {
   const handleSaveLimit = () => {
     if (!limitForm.categoryId) return;
     const numericAmount = Number(limitForm.amount.toString().replace(",", "."));
-    const currentMonthKey = bounds.monthKey;
+    const targetMonthKey = limitMonthKey;
 
     if (numericAmount === 0) {
       const newGlobalLimits = { ...catLimits };
       delete newGlobalLimits[limitForm.categoryId];
       setCatLimits(newGlobalLimits);
-      localStorage.setItem("vys_category_limits", JSON.stringify(newGlobalLimits));
+      localStorage.setItem(
+        "vys_category_limits",
+        JSON.stringify(newGlobalLimits),
+      );
 
       const newMonthlyLimits = { ...monthlyCatLimits };
-      if (newMonthlyLimits[currentMonthKey]) {
-        delete newMonthlyLimits[currentMonthKey][limitForm.categoryId];
-        if (Object.keys(newMonthlyLimits[currentMonthKey]).length === 0)
-          delete newMonthlyLimits[currentMonthKey];
+      if (newMonthlyLimits[targetMonthKey]) {
+        delete newMonthlyLimits[targetMonthKey][limitForm.categoryId];
+        if (Object.keys(newMonthlyLimits[targetMonthKey]).length === 0)
+          delete newMonthlyLimits[targetMonthKey];
         setMonthlyCatLimits(newMonthlyLimits);
-        localStorage.setItem("vys_monthly_category_limits", JSON.stringify(newMonthlyLimits));
+        localStorage.setItem(
+          "vys_monthly_category_limits",
+          JSON.stringify(newMonthlyLimits),
+        );
       }
     } else if (limitScope === "month") {
       const newMonthlyLimits = { ...monthlyCatLimits };
-      if (!newMonthlyLimits[currentMonthKey]) newMonthlyLimits[currentMonthKey] = {};
-      newMonthlyLimits[currentMonthKey][limitForm.categoryId] = numericAmount;
+      if (!newMonthlyLimits[targetMonthKey])
+        newMonthlyLimits[targetMonthKey] = {};
+      newMonthlyLimits[targetMonthKey][limitForm.categoryId] = numericAmount;
       setMonthlyCatLimits(newMonthlyLimits);
-      localStorage.setItem("vys_monthly_category_limits", JSON.stringify(newMonthlyLimits));
+      localStorage.setItem(
+        "vys_monthly_category_limits",
+        JSON.stringify(newMonthlyLimits),
+      );
     } else if (limitScope === "future") {
       const newGlobalLimits = { ...catLimits };
       newGlobalLimits[limitForm.categoryId] = numericAmount;
       setCatLimits(newGlobalLimits);
-      localStorage.setItem("vys_category_limits", JSON.stringify(newGlobalLimits));
+      localStorage.setItem(
+        "vys_category_limits",
+        JSON.stringify(newGlobalLimits),
+      );
 
       const newMonthlyLimits = { ...monthlyCatLimits };
       Object.keys(newMonthlyLimits).forEach((mKey) => {
-        if (mKey >= currentMonthKey) {
+        if (mKey >= targetMonthKey) {
           delete newMonthlyLimits[mKey][limitForm.categoryId];
           if (Object.keys(newMonthlyLimits[mKey]).length === 0) {
             delete newMonthlyLimits[mKey];
@@ -402,23 +462,32 @@ export default function Analytics() {
         }
       });
       setMonthlyCatLimits(newMonthlyLimits);
-      localStorage.setItem("vys_monthly_category_limits", JSON.stringify(newMonthlyLimits));
+      localStorage.setItem(
+        "vys_monthly_category_limits",
+        JSON.stringify(newMonthlyLimits),
+      );
     } else {
       const newGlobalLimits = { ...catLimits };
       newGlobalLimits[limitForm.categoryId] = numericAmount;
       setCatLimits(newGlobalLimits);
-      localStorage.setItem("vys_category_limits", JSON.stringify(newGlobalLimits));
+      localStorage.setItem(
+        "vys_category_limits",
+        JSON.stringify(newGlobalLimits),
+      );
 
       const newMonthlyLimits = { ...monthlyCatLimits };
       if (
-        newMonthlyLimits[currentMonthKey] &&
-        newMonthlyLimits[currentMonthKey][limitForm.categoryId] !== undefined
+        newMonthlyLimits[targetMonthKey] &&
+        newMonthlyLimits[targetMonthKey][limitForm.categoryId] !== undefined
       ) {
-        delete newMonthlyLimits[currentMonthKey][limitForm.categoryId];
-        if (Object.keys(newMonthlyLimits[currentMonthKey]).length === 0)
-          delete newMonthlyLimits[currentMonthKey];
+        delete newMonthlyLimits[targetMonthKey][limitForm.categoryId];
+        if (Object.keys(newMonthlyLimits[targetMonthKey]).length === 0)
+          delete newMonthlyLimits[targetMonthKey];
         setMonthlyCatLimits(newMonthlyLimits);
-        localStorage.setItem("vys_monthly_category_limits", JSON.stringify(newMonthlyLimits));
+        localStorage.setItem(
+          "vys_monthly_category_limits",
+          JSON.stringify(newMonthlyLimits),
+        );
       }
     }
     setSaveLimitSuccess(true);
@@ -433,7 +502,6 @@ export default function Analytics() {
       : parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
-  // Sparkline data calculation Fix: Tính toàn bộ các ngày có trong khung thời gian
   const globalGroupedData = filteredData.reduce((acc, tran) => {
     const d = new Date(tran.date);
     d.setHours(0, 0, 0, 0);
@@ -446,7 +514,7 @@ export default function Analytics() {
   const sparklineData = [];
   const iterDate = new Date(bounds.start);
   iterDate.setHours(0, 0, 0, 0);
-  
+
   const endIterDate = isCurrentPeriod ? new Date() : new Date(bounds.end);
   if (isCurrentPeriod) endIterDate.setHours(23, 59, 59, 999);
 
@@ -595,7 +663,6 @@ export default function Analytics() {
               <div
                 className={`flex-1 rounded-xl p-4 relative overflow-hidden ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-white shadow-sm"}`}
               >
-                {/* SPARKLINE CHART */}
                 {sparklinePoints && (
                   <svg
                     className={`absolute bottom-0 left-0 w-full h-12 pointer-events-none opacity-50 ${theme === "dark" ? "text-gray-500" : "text-gray-300"}`}
@@ -844,7 +911,28 @@ export default function Analytics() {
                 <X size={20} />
               </button>
             </div>
-            
+
+            <div className="flex items-center gap-3 mb-5">
+              <span
+                className={`text-[13px] font-semibold ${theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
+              >
+                Target Month:
+              </span>
+              <input
+                type="month"
+                value={limitMonthKey}
+                onChange={(e) => {
+                  const newVal = e.target.value;
+                  if (newVal) {
+                    setLimitMonthKey(newVal);
+                    if (limitForm.categoryId)
+                      loadFormForCat(limitForm.categoryId, newVal);
+                  }
+                }}
+                className={`flex-1 p-2 rounded-xl text-[14px] font-bold outline-none ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-gray-100 text-black"}`}
+              />
+            </div>
+
             <div
               className={`flex rounded-xl p-1 mb-5 w-full ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-gray-200"}`}
             >
@@ -874,7 +962,7 @@ export default function Analytics() {
                 .map((cat) => (
                   <button
                     key={cat.id}
-                    onClick={() => loadFormForCat(cat.id)}
+                    onClick={() => loadFormForCat(cat.id, limitMonthKey)}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap transition-all border flex-shrink-0 ${limitForm.categoryId === cat.id ? (theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-200") : theme === "dark" ? "bg-[#2c2c2e]/40 border-transparent text-[#8e8e93]" : "bg-gray-50 border-transparent text-gray-400"}`}
                     style={{
                       borderColor:
