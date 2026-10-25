@@ -176,6 +176,7 @@ export default function Analytics() {
 
   const filteredData = transactions.filter((tItem) => {
     if (tItem.type !== typeFilter || !tItem.date) return false;
+    // Fix iOS Invalid Date Bug
     const d = new Date(tItem.date.replace(" ", "T"));
     return d >= bounds.start && d < bounds.end;
   });
@@ -321,11 +322,13 @@ export default function Analytics() {
     typeFilter === "expense"
       ? currentBudget - totalAmount
       : currentIncomeGoal - totalAmount;
-
   const isCurrentPeriod = offset === 0;
   const now = new Date();
   const daysInCycle = Math.round((bounds.end - bounds.start) / 86400000);
-  const pastData = filteredData.filter((item) => new Date(item.date) <= now);
+  // Fix iOS Invalid Date Bug
+  const pastData = filteredData.filter(
+    (item) => new Date(item.date.replace(" ", "T")) <= now,
+  );
   const totalAmountPast = pastData.reduce((sum, item) => sum + item.amount, 0);
   const futureDataTotal = totalAmount - totalAmountPast;
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -348,10 +351,14 @@ export default function Analytics() {
   const catTransactions = selectedCategory
     ? filteredData.filter((t) => t.category?.id === selectedCategory.id)
     : [];
-  catTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+  catTransactions.sort(
+    (a, b) =>
+      new Date(b.date.replace(" ", "T")) - new Date(a.date.replace(" ", "T")),
+  );
   const catTotal = catTransactions.reduce((sum, t) => sum + t.amount, 0);
 
   const groupedDetailData = catTransactions.reduce((acc, tran) => {
+    // Fix iOS Invalid Date Bug
     const d = tran.date ? new Date(tran.date.replace(" ", "T")) : new Date();
     d.setHours(0, 0, 0, 0);
     const dateKey = d.toISOString();
@@ -367,27 +374,29 @@ export default function Analytics() {
   const isLimitApplicable = typeFilter === "expense" && timeFilter === "month";
   const currentViewMode = isLimitApplicable ? catViewMode : "percent";
 
-  const loadFormForCat = (catId, mKey = limitMonthKey) => {
+  // Thêm cờ preserveScope để ngăn Safari/iOS làm nhảy nhót UI khi chọn Tháng
+  const loadFormForCat = (
+    catId,
+    mKey = limitMonthKey,
+    preserveScope = false,
+  ) => {
     setSaveLimitSuccess(false);
     const localLimit = monthlyCatLimits[mKey]?.[catId];
     const globalLimit = catLimits[catId];
 
+    let amountToSet = "0";
+    let newScope = preserveScope ? limitScope : "month";
+
     if (localLimit !== undefined) {
-      setLimitForm({
-        categoryId: catId,
-        amount: localLimit.toString().replace(".", ","),
-      });
-      setLimitScope("month");
+      amountToSet = localLimit.toString().replace(".", ",");
+      if (!preserveScope) newScope = "month";
     } else if (globalLimit !== undefined) {
-      setLimitForm({
-        categoryId: catId,
-        amount: globalLimit.toString().replace(".", ","),
-      });
-      setLimitScope("all");
-    } else {
-      setLimitForm({ categoryId: catId, amount: "0" });
-      setLimitScope("all");
+      amountToSet = globalLimit.toString().replace(".", ",");
+      if (!preserveScope) newScope = "all";
     }
+
+    setLimitForm({ categoryId: catId, amount: amountToSet });
+    setLimitScope(newScope);
   };
 
   const openLimitModal = () => {
@@ -399,7 +408,7 @@ export default function Analytics() {
     }
     setLimitMonthKey(mKey);
     const activeCats = categories.filter((c) => c.type === typeFilter);
-    if (activeCats.length > 0) loadFormForCat(activeCats[0].id, mKey);
+    if (activeCats.length > 0) loadFormForCat(activeCats[0].id, mKey, false);
     setShowLimitModal(true);
   };
 
@@ -444,23 +453,24 @@ export default function Analytics() {
         JSON.stringify(newMonthlyLimits),
       );
     } else if (limitScope === "future") {
-      const newGlobalLimits = { ...catLimits };
-      newGlobalLimits[limitForm.categoryId] = numericAmount;
-      setCatLimits(newGlobalLimits);
-      localStorage.setItem(
-        "vys_category_limits",
-        JSON.stringify(newGlobalLimits),
-      );
-
+      // Fix mạnh mẽ: Không đụng vào Global Limit để tránh làm hỏng quá khứ.
+      // Giải pháp: Dải đạn Local Limit ra 24 tháng liên tục bắt đầu từ tháng Target.
       const newMonthlyLimits = { ...monthlyCatLimits };
-      Object.keys(newMonthlyLimits).forEach((mKey) => {
-        if (mKey >= targetMonthKey) {
-          delete newMonthlyLimits[mKey][limitForm.categoryId];
-          if (Object.keys(newMonthlyLimits[mKey]).length === 0) {
-            delete newMonthlyLimits[mKey];
-          }
+      let [year, month] = targetMonthKey.split("-").map(Number);
+
+      for (let i = 0; i < 24; i++) {
+        let mStr = month.toString().padStart(2, "0");
+        let key = `${year}-${mStr}`;
+        if (!newMonthlyLimits[key]) newMonthlyLimits[key] = {};
+        newMonthlyLimits[key][limitForm.categoryId] = numericAmount;
+
+        month++;
+        if (month > 12) {
+          month = 1;
+          year++;
         }
-      });
+      }
+
       setMonthlyCatLimits(newMonthlyLimits);
       localStorage.setItem(
         "vys_monthly_category_limits",
@@ -503,7 +513,8 @@ export default function Analytics() {
   };
 
   const globalGroupedData = filteredData.reduce((acc, tran) => {
-    const d = new Date(tran.date);
+    // Fix iOS Invalid Date Bug
+    const d = new Date(tran.date.replace(" ", "T"));
     d.setHours(0, 0, 0, 0);
     const dateKey = d.getTime();
     if (!acc[dateKey]) acc[dateKey] = 0;
@@ -542,71 +553,64 @@ export default function Analytics() {
       <div
         className={`h-[100dvh] w-full flex flex-col relative overflow-hidden animate-ios-page ${theme === "dark" ? "bg-black text-white" : "bg-[#f2f2f7] text-black"}`}
       >
+        {/* TỐI GIẢN: Bỏ sạch Background rườm rà ở Header */}
         <div
-          className={`flex-shrink-0 z-40 px-4 pb-3 flex flex-col gap-3 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] ${theme === "dark" ? "bg-black/90 shadow-[0_1px_0_0_rgba(255,255,255,0.05)]" : "bg-[#f2f2f7]/90"}`}
+          className={`flex-shrink-0 z-40 px-5 pb-2 pt-1 ${theme === "dark" ? "bg-black/90" : "bg-[#f2f2f7]/90"}`}
           style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
         >
-          <div className="flex justify-center items-center">
-            <div
-              className={`relative flex rounded-full p-1 w-[240px] ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-gray-200"}`}
-            >
-              <div
-                className={`absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full transition-all duration-300 ease-out ${typeFilter === "expense" ? "translate-x-0 bg-[#ff453a]" : "translate-x-[100%] bg-[#32d74b]"}`}
-              ></div>
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex gap-4">
               <button
                 onClick={() => setTypeFilter("expense")}
-                className={`relative z-10 flex-1 py-1.5 text-sm font-semibold transition-colors duration-300 ${typeFilter === "expense" ? "text-white" : "text-[#8e8e93]"}`}
+                className={`text-[22px] font-bold tracking-tight transition-colors ${typeFilter === "expense" ? (theme === "dark" ? "text-white" : "text-black") : "text-[#8e8e93]"}`}
               >
                 Expense
               </button>
               <button
                 onClick={() => setTypeFilter("income")}
-                className={`relative z-10 flex-1 py-1.5 text-sm font-semibold transition-colors duration-300 ${typeFilter === "income" ? "text-white" : "text-[#8e8e93]"}`}
+                className={`text-[22px] font-bold tracking-tight transition-colors ${typeFilter === "income" ? (theme === "dark" ? "text-white" : "text-black") : "text-[#8e8e93]"}`}
               >
                 Income
               </button>
             </div>
+            <div
+              className={`flex gap-1 p-1 rounded-full ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-gray-200"}`}
+            >
+              {[
+                { id: "week", l: "W" },
+                { id: "month", l: "M" },
+                { id: "year", l: "Y" },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => {
+                    setTimeFilter(f.id);
+                    setOffset(0);
+                  }}
+                  className={`w-8 h-7 text-[12px] font-bold rounded-full transition-colors flex items-center justify-center ${timeFilter === f.id ? (theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black shadow-sm") : "text-[#8e8e93]"}`}
+                >
+                  {f.l}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex gap-2">
-            {[
-              { id: "week", label: "Week" },
-              { id: "month", label: "Month" },
-              { id: "year", label: "Year" },
-            ].map((filter) => (
-              <button
-                key={filter.id}
-                onClick={() => {
-                  setTimeFilter(filter.id);
-                  setOffset(0);
-                }}
-                className={`flex-1 py-2 rounded-full text-[13px] font-bold transition-colors ${timeFilter === filter.id ? (theme === "dark" ? "bg-white text-black" : "bg-black text-white") : theme === "dark" ? "bg-[#1c1c1e] text-[#8e8e93]" : "bg-white text-gray-500"}`}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
-
-          <div
-            className={`flex items-center justify-between rounded-xl px-4 py-2 ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-white"}`}
-          >
+          <div className="flex justify-between items-center">
             <button
               onClick={() => setOffset((o) => o - 1)}
-              className="p-1 text-[#32ade6] active:opacity-50 flex-shrink-0"
+              className="p-1 text-[#32ade6] active:opacity-50"
             >
-              <ChevronLeft size={20} />
+              <ChevronLeft size={24} />
             </button>
-            <div className="relative flex-1 mx-2 flex items-center justify-center">
-              <span className="text-[13px] font-bold tracking-wide pointer-events-none text-center">
-                {bounds.label}
-              </span>
+            <div className="relative font-bold text-[17px] tracking-wide">
+              {bounds.label}
               {timeFilter === "year" ? (
                 <select
-                  className="absolute inset-0 w-full h-full opacity-0 z-10"
+                  className="absolute inset-0 w-full h-full opacity-0"
                   onChange={(e) => {
-                    const diff =
-                      parseInt(e.target.value) - new Date().getFullYear();
-                    setOffset(diff);
+                    setOffset(
+                      parseInt(e.target.value) - new Date().getFullYear(),
+                    );
                     e.target.value = "";
                   }}
                 >
@@ -623,22 +627,19 @@ export default function Analytics() {
               ) : (
                 <input
                   type={timeFilter === "month" ? "month" : "date"}
-                  className="absolute inset-0 w-full h-full opacity-0 z-10"
+                  className="absolute inset-0 w-full h-full opacity-0"
                   onChange={(e) => {
                     if (!e.target.value) return;
-                    const selectedDate = new Date(e.target.value);
-                    const today = new Date();
+                    const sd = new Date(e.target.value);
+                    const td = new Date();
                     if (timeFilter === "month")
                       setOffset(
-                        (selectedDate.getFullYear() - today.getFullYear()) *
-                          12 +
-                          (selectedDate.getMonth() - today.getMonth()),
+                        (sd.getFullYear() - td.getFullYear()) * 12 +
+                          (sd.getMonth() - td.getMonth()),
                       );
                     else
                       setOffset(
-                        Math.floor(
-                          Math.round((selectedDate - today) / 86400000) / 7,
-                        ),
+                        Math.floor(Math.round((sd - td) / 86400000) / 7),
                       );
                     e.target.value = "";
                   }}
@@ -647,64 +648,37 @@ export default function Analytics() {
             </div>
             <button
               onClick={() => setOffset((o) => o + 1)}
-              className="p-1 text-[#32ade6] active:opacity-50 flex-shrink-0"
+              className="p-1 text-[#32ade6] active:opacity-50"
             >
-              <ChevronRight size={20} />
+              <ChevronRight size={24} />
             </button>
           </div>
         </div>
 
         <div
-          className="flex-1 overflow-y-auto px-4 pt-4 pb-32 overscroll-y-auto"
+          className="flex-1 overflow-y-auto px-5 pt-3 pb-32 overscroll-y-auto scrollbar-hide"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
-          <div className="mb-5">
-            <div className="flex gap-2.5 mb-3">
-              <div
-                className={`flex-1 rounded-xl p-4 relative overflow-hidden ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-white shadow-sm"}`}
-              >
-                {sparklinePoints && (
-                  <svg
-                    className={`absolute bottom-0 left-0 w-full h-12 pointer-events-none opacity-50 ${theme === "dark" ? "text-gray-500" : "text-gray-300"}`}
-                    viewBox="0 0 100 30"
-                    preserveAspectRatio="none"
-                  >
-                    <polyline
-                      points={sparklinePoints}
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      vectorEffect="non-scaling-stroke"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <polyline
-                      points={`100,30 0,30 ${sparklinePoints}`}
-                      fill="currentColor"
-                      opacity="0.15"
-                      stroke="none"
-                    />
-                  </svg>
-                )}
-                <div className="relative z-10">
-                  <p className="text-[#8e8e93] text-xs font-semibold mb-1">
-                    {typeFilter === "expense" ? "Spent" : "Earned"}
-                  </p>
-                  <div className="text-[22px] font-bold tracking-tight">
-                    ₫{totalAmount.toLocaleString("vi-VN")}
-                  </div>
+          {/* TỐI GIẢN: Gom chung Card Chart và Thông số */}
+          <div
+            className={`rounded-3xl p-5 mb-6 ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-white shadow-sm"}`}
+          >
+            <div className="flex justify-between items-end mb-4">
+              <div>
+                <p className="text-[13px] font-semibold text-[#8e8e93] mb-1">
+                  {typeFilter === "expense" ? "Spent" : "Earned"}
+                </p>
+                <div className="text-[32px] font-bold tracking-tight leading-none">
+                  ₫{totalAmount.toLocaleString("vi-VN")}
                 </div>
               </div>
-
               {timeFilter === "month" && (
-                <div
-                  className={`flex-1 rounded-xl p-4 ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-white shadow-sm"}`}
-                >
-                  <p className="text-[#8e8e93] text-xs font-semibold mb-1">
-                    {typeFilter === "expense" ? "Budget left" : "Goal left"}
+                <div className="text-right">
+                  <p className="text-[13px] font-semibold text-[#8e8e93] mb-1">
+                    Left
                   </p>
                   <div
-                    className={`text-[22px] font-bold tracking-tight ${budgetLeft < 0 ? "text-[#ff453a]" : ""}`}
+                    className={`text-[17px] font-bold leading-none ${budgetLeft < 0 ? "text-[#ff453a]" : ""}`}
                   >
                     {budgetLeft < 0 ? "-" : ""}₫
                     {Math.abs(budgetLeft).toLocaleString("vi-VN")}
@@ -713,43 +687,62 @@ export default function Analytics() {
               )}
             </div>
 
+            <div className="h-12 relative w-full overflow-hidden mb-2">
+              {sparklinePoints && (
+                <svg
+                  className={`absolute inset-0 w-full h-full ${theme === "dark" ? "text-gray-500" : "text-gray-300"}`}
+                  viewBox="0 0 100 30"
+                  preserveAspectRatio="none"
+                >
+                  <polyline
+                    points={sparklinePoints}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    vectorEffect="non-scaling-stroke"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </div>
+
             {isCurrentPeriod &&
               typeFilter === "expense" &&
               timeFilter === "month" && (
-                <div className="px-1">
-                  <p className="text-sm font-semibold">
-                    <span className="text-[#8e8e93]">On pace for </span>
+                <div
+                  className={`mt-4 pt-3 border-t flex justify-between items-center ${theme === "dark" ? "border-white/10" : "border-black/5"}`}
+                >
+                  <span className="text-[13px] font-semibold text-[#8e8e93]">
+                    On pace for{" "}
                     <span className="text-[#32ade6]">
                       ₫{Math.round(onPaceFor).toLocaleString("vi-VN")}
                     </span>
-                  </p>
-                  <p className="text-[13px] text-[#5c5c60] font-semibold mt-0.5">
+                  </span>
+                  <span className="text-[12px] font-semibold text-[#8e8e93]">
                     ₫{Math.round(dailyAverage).toLocaleString("vi-VN")}/day
-                    average
-                  </p>
+                  </span>
                 </div>
               )}
-
             {isCurrentPeriod && timeFilter === "year" && (
-              <div className="px-1">
-                <p className="text-sm font-semibold">
-                  <span className="text-[#8e8e93]">Yearly pace </span>
+              <div
+                className={`mt-4 pt-3 border-t flex justify-between items-center ${theme === "dark" ? "border-white/10" : "border-black/5"}`}
+              >
+                <span className="text-[13px] font-semibold text-[#8e8e93]">
+                  Year pace{" "}
                   <span className="text-[#32ade6]">
                     ₫{Math.round(onPaceFor).toLocaleString("vi-VN")}
                   </span>
-                </p>
-                <p className="text-[13px] text-[#5c5c60] font-semibold mt-0.5">
+                </span>
+                <span className="text-[12px] font-semibold text-[#8e8e93]">
                   ₫{Math.round(onPaceFor / 12).toLocaleString("vi-VN")}/mo
-                  average
-                </p>
+                </span>
               </div>
             )}
           </div>
 
-          <div
-            className={`rounded-2xl px-5 pt-3 pb-2 ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-white shadow-sm"}`}
-          >
-            <div className="flex justify-between items-center mb-3">
+          <div>
+            <div className="flex justify-between items-center mb-4">
               {isLimitApplicable ? (
                 <>
                   <button
@@ -758,7 +751,7 @@ export default function Analytics() {
                         m === "percent" ? "limit" : "percent",
                       )
                     }
-                    className="flex items-center gap-1 text-[#8e8e93] text-[13px] font-semibold active:opacity-60 transition-opacity"
+                    className="flex items-center gap-1 text-[#8e8e93] text-[13px] font-semibold active:opacity-60"
                   >
                     By category:{" "}
                     <span
@@ -770,121 +763,103 @@ export default function Analytics() {
                   </button>
                   <button
                     onClick={openLimitModal}
-                    className="text-[#32ade6] text-[13px] font-semibold active:opacity-60 transition-opacity"
+                    className="text-[#32ade6] text-[13px] font-semibold active:opacity-60"
                   >
                     + Add limit
                   </button>
                 </>
               ) : (
-                <p className="text-[#8e8e93] text-[13px] font-semibold ml-1">
+                <p className="text-[#8e8e93] text-[13px] font-semibold">
                   By category
                 </p>
               )}
             </div>
 
-            <div className="flex flex-col">
-              {categoryData.map((cat, idx) => {
+            {/* TỐI GIẢN: Danh sách Category bo tròn tinh tế, không viền cồng kềnh */}
+            <div className="flex flex-col gap-4">
+              {categoryData.map((cat) => {
                 let displayPercent = cat.percent;
                 let limitAmt = null;
                 let isOver = false;
 
                 if (currentViewMode === "limit") {
-                  const currentMonthKey = bounds.monthKey;
-                  const localLimit =
-                    monthlyCatLimits[currentMonthKey]?.[cat.id];
-                  const globalLimit = catLimits[cat.id];
                   const activeLimit =
-                    localLimit !== undefined ? localLimit : globalLimit;
+                    monthlyCatLimits[bounds.monthKey]?.[cat.id] ??
+                    catLimits[cat.id];
                   if (activeLimit) {
                     limitAmt = activeLimit;
                     displayPercent = (cat.spent / limitAmt) * 100;
                     isOver = displayPercent > 100;
-                  } else {
-                    displayPercent = null;
-                  }
+                  } else displayPercent = null;
                 }
 
                 return (
                   <div
                     key={cat.id}
                     onClick={() => openDetail(cat)}
-                    className="relative py-2.5 cursor-pointer active:opacity-60 transition-opacity"
+                    className="cursor-pointer active:opacity-60 transition-opacity"
                   >
-                    <div
-                      className="absolute left-0 top-3 bottom-6 w-[3px] rounded-r-md"
-                      style={{ backgroundColor: cat.color || "#32ade6" }}
-                    ></div>
-                    <div className="pl-4 pr-1">
-                      <div className="flex justify-between items-center mb-1.5">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[20px]">{cat.icon}</span>
-                          <div className="flex flex-col justify-center">
-                            <span className="font-bold text-[15px] leading-tight">
-                              {cat.name}
-                            </span>
-                            {currentViewMode === "limit" && limitAmt && (
-                              <span className="text-[12px] font-medium text-[#8e8e93] leading-tight">
-                                Limit: ₫{limitAmt.toLocaleString("vi-VN")}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="font-bold text-[15px]">
-                          ₫{cat.spent.toLocaleString("vi-VN")}{" "}
-                          <span className="text-[#8e8e93] font-normal ml-1 text-lg leading-none">
-                            ›
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-4 mt-1">
-                        <div className="flex-1 h-1 relative flex items-center">
-                          <div
-                            className={`absolute inset-0 rounded-full overflow-hidden ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-200"}`}
-                          >
-                            {(currentViewMode === "percent" ||
-                              displayPercent !== null) && (
-                              <div
-                                className="h-full rounded-full transition-all duration-300"
-                                style={{
-                                  width: `${Math.min(displayPercent || 0, 100)}%`,
-                                  backgroundColor: cat.color || "#32ade6",
-                                }}
-                              ></div>
-                            )}
-                          </div>
-                          {currentViewMode === "limit" &&
-                            limitAmt &&
-                            isCurrentPeriod && (
-                              <div
-                                className={`absolute -top-1 -bottom-1 w-[2px] rounded-full z-10 shadow-sm ${theme === "dark" ? "bg-white" : "bg-black"}`}
-                                style={{
-                                  left: `calc(${Math.min(pacePercent, 100)}% - 1px)`,
-                                }}
-                              ></div>
-                            )}
-                        </div>
-                        <span
-                          className={`text-[12px] font-bold min-w-[32px] text-right ${isOver ? "text-[#ff453a]" : "text-[#8e8e93]"}`}
-                        >
-                          {currentViewMode === "percent"
-                            ? `${Math.round(displayPercent)}%`
-                            : displayPercent !== null
-                              ? `${Math.round(displayPercent)}%`
-                              : "—"}
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[26px] drop-shadow-sm">
+                          {cat.icon}
+                        </span>
+                        <span className="font-bold text-[16px]">
+                          {cat.name}
                         </span>
                       </div>
+                      <div className="text-right flex flex-col justify-center">
+                        <span className="font-bold text-[16px]">
+                          ₫{cat.spent.toLocaleString("vi-VN")}
+                        </span>
+                        {currentViewMode === "limit" && limitAmt && (
+                          <span
+                            className={`text-[12px] font-medium ${isOver ? "text-[#ff453a]" : "text-[#8e8e93]"}`}
+                          >
+                            of ₫{limitAmt.toLocaleString("vi-VN")}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    {idx !== categoryData.length - 1 && (
+                    <div className="flex items-center gap-3">
                       <div
-                        className={`absolute bottom-0 left-4 right-1 h-[1px] ${theme === "dark" ? "bg-white/5" : "bg-black/5"}`}
-                      ></div>
-                    )}
+                        className={`flex-1 h-1.5 rounded-full overflow-hidden relative ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-200"}`}
+                      >
+                        {(currentViewMode === "percent" ||
+                          displayPercent !== null) && (
+                          <div
+                            className="h-full rounded-full transition-all duration-300"
+                            style={{
+                              width: `${Math.min(displayPercent || 0, 100)}%`,
+                              backgroundColor: cat.color || "#32ade6",
+                            }}
+                          ></div>
+                        )}
+                        {currentViewMode === "limit" &&
+                          limitAmt &&
+                          isCurrentPeriod && (
+                            <div
+                              className={`absolute -top-1 -bottom-1 w-[2px] rounded-full z-10 shadow-sm ${theme === "dark" ? "bg-white" : "bg-black"}`}
+                              style={{
+                                left: `calc(${Math.min(pacePercent, 100)}% - 1px)`,
+                              }}
+                            ></div>
+                          )}
+                      </div>
+                      <span
+                        className={`text-[12px] font-bold min-w-[36px] text-right ${isOver ? "text-[#ff453a]" : "text-[#8e8e93]"}`}
+                      >
+                        {currentViewMode === "percent" ||
+                        displayPercent !== null
+                          ? `${Math.round(displayPercent)}%`
+                          : "—"}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
               {categoryData.length === 0 && (
-                <p className="text-center text-[#8e8e93] pb-4 pt-2 text-sm">
+                <p className="text-center text-[#8e8e93] pb-4 pt-6 text-sm">
                   No data for this period.
                 </p>
               )}
@@ -925,8 +900,9 @@ export default function Analytics() {
                   const newVal = e.target.value;
                   if (newVal) {
                     setLimitMonthKey(newVal);
+                    // Cờ True: Ngăn Safari tự nhảy sang All Time khi blur!
                     if (limitForm.categoryId)
-                      loadFormForCat(limitForm.categoryId, newVal);
+                      loadFormForCat(limitForm.categoryId, newVal, true);
                   }
                 }}
                 className={`flex-1 p-2 rounded-xl text-[14px] font-bold outline-none ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-gray-100 text-black"}`}
@@ -962,7 +938,7 @@ export default function Analytics() {
                 .map((cat) => (
                   <button
                     key={cat.id}
-                    onClick={() => loadFormForCat(cat.id, limitMonthKey)}
+                    onClick={() => loadFormForCat(cat.id, limitMonthKey, false)}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap transition-all border flex-shrink-0 ${limitForm.categoryId === cat.id ? (theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-200") : theme === "dark" ? "bg-[#2c2c2e]/40 border-transparent text-[#8e8e93]" : "bg-gray-50 border-transparent text-gray-400"}`}
                     style={{
                       borderColor:
@@ -980,6 +956,7 @@ export default function Analytics() {
                   </button>
                 ))}
             </div>
+
             <div className="relative w-full mb-2">
               <input
                 type="text"
@@ -1088,7 +1065,7 @@ export default function Analytics() {
                     </span>
                   </div>
                   <div className="flex flex-col">
-                    {group.items.map((t, index) => (
+                    {group.items.map((t) => (
                       <div
                         key={t.id}
                         className={`flex justify-between items-center py-4 border-b ${theme === "dark" ? "border-white/5" : "border-black/5"}`}
@@ -1108,7 +1085,9 @@ export default function Analytics() {
                               {t.note || selectedCategory.name}
                             </p>
                             <p className="text-[13px] text-[#8e8e93] leading-tight font-medium">
-                              {new Date(t.date).toLocaleTimeString("en-US", {
+                              {new Date(
+                                t.date.replace(" ", "T"),
+                              ).toLocaleTimeString("en-US", {
                                 hour: "numeric",
                                 minute: "2-digit",
                                 hour12: true,
