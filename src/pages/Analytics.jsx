@@ -459,7 +459,7 @@ export default function Analytics() {
       mKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}`;
     }
     setLimitMonthKey(mKey);
-    setLimitYear(parseInt(mKey.split("-")[0])); // Lấy năm của tháng hiện tại
+    setLimitYear(parseInt(mKey.split("-")[0]));
     const activeCats = categories.filter((c) => c.type === typeFilter);
     if (activeCats.length > 0) loadFormForCat(activeCats[0].id, mKey, false);
     setShowLimitModal(true);
@@ -584,7 +584,6 @@ export default function Analytics() {
       : parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
-  // Helper format thu gọn chữ số Limit vào box (VD: 500000 -> 500K)
   const formatCompact = (val) => {
     if (!val) return "";
     const num = Number(val);
@@ -956,7 +955,7 @@ export default function Analytics() {
           ref={limitModalRef}
           className={`fixed inset-0 z-50 flex flex-col overflow-y-auto animate-ios-slide will-change-transform ${theme === "dark" ? "bg-black" : "bg-[#f2f2f7]"}`}
         >
-          {/* Header với Drag Handle - Cụm này sẽ giữ cố định lúc trượt */}
+          {/* Header với Drag Handle */}
           <div
             className={`flex-shrink-0 z-40 pb-3 px-4 flex flex-col items-center shadow-[0_1px_0_0_rgba(0,0,0,0.05)] ${theme === "dark" ? "bg-black/90 shadow-[0_1px_0_0_rgba(255,255,255,0.05)]" : "bg-[#f2f2f7]/90"}`}
             style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
@@ -964,8 +963,10 @@ export default function Analytics() {
             <div
               className={`w-14 h-1.5 rounded-full mb-3 ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-300"}`}
             ></div>
-            <div className="flex justify-between items-center w-full">
-              <h2 className="font-bold text-[17px] text-center w-full absolute left-0 -z-10">
+            <div className="relative flex justify-center items-center w-full">
+              <h2
+                className={`font-bold text-[17px] text-center ${theme === "dark" ? "text-white" : "text-black"}`}
+              >
                 Category Limit
               </h2>
             </div>
@@ -980,7 +981,9 @@ export default function Analytics() {
               >
                 <ChevronLeft size={20} />
               </button>
-              <span className="font-bold text-[20px] tracking-tight">
+              <span
+                className={`font-bold text-[20px] tracking-tight ${theme === "dark" ? "text-white" : "text-black"}`}
+              >
                 {limitYear}
               </span>
               <button
@@ -999,18 +1002,22 @@ export default function Analytics() {
                   <button
                     key={cat.id}
                     onClick={() => loadFormForCat(cat.id, limitMonthKey, false)}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-full transition-all border flex-shrink-0 ${limitForm.categoryId === cat.id ? (theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-200") : theme === "dark" ? "bg-[#1c1c1e] text-[#8e8e93] border-white/5" : "bg-white text-gray-500 border-black/5"}`}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-full transition-all border flex-shrink-0 ${
+                      limitForm.categoryId === cat.id
+                        ? theme === "dark"
+                          ? "bg-[#2c2c2e] text-white"
+                          : "bg-gray-200 text-black"
+                        : theme === "dark"
+                          ? "bg-[#1c1c1e] text-[#8e8e93] border-white/5"
+                          : "bg-white text-gray-500 border-black/5"
+                    }`}
                     style={{
                       borderColor:
                         limitForm.categoryId === cat.id ? cat.color : undefined,
                     }}
                   >
                     <span>{cat.icon}</span>
-                    <span
-                      className={`text-sm font-semibold ${limitForm.categoryId === cat.id ? "" : theme === "dark" ? "" : "text-gray-500"}`}
-                    >
-                      {cat.name}
-                    </span>
+                    <span className="text-sm font-semibold">{cat.name}</span>
                   </button>
                 ))}
             </div>
@@ -1036,6 +1043,7 @@ export default function Analytics() {
                   monthlyCatLimits[mKey]?.[limitForm.categoryId] ??
                   catLimits[limitForm.categoryId];
                 const isSelected = limitMonthKey === mKey;
+
                 return (
                   <button
                     key={i}
@@ -1043,15 +1051,39 @@ export default function Analytics() {
                       setLimitMonthKey(mKey);
                       loadFormForCat(limitForm.categoryId, mKey, false);
                     }}
-                    className={`p-3 rounded-2xl flex flex-col items-center justify-center border-2 transition-all ${isSelected ? (theme === "dark" ? "border-[#32ade6] bg-[#32ade6]/10" : "border-[#32ade6] bg-[#32ade6]/10") : theme === "dark" ? "border-transparent bg-[#1c1c1e]" : "border-transparent bg-white shadow-sm"}`}
+                    className={`p-3 rounded-2xl flex flex-col items-center justify-center transition-all ${
+                      isSelected
+                        ? theme === "dark"
+                          ? "border-[3px] border-white bg-[#1c1c1e]"
+                          : "border-[3px] border-black bg-white shadow-sm"
+                        : theme === "dark"
+                          ? "border-[2px] border-transparent bg-[#1c1c1e]"
+                          : "border-[2px] border-transparent bg-white shadow-sm"
+                    }`}
                   >
                     <span
-                      className={`text-[13px] font-bold mb-1 ${isSelected ? "text-[#32ade6]" : theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
+                      className={`text-[13px] font-bold mb-1 transition-colors ${
+                        isSelected
+                          ? theme === "dark"
+                            ? "text-white"
+                            : "text-black"
+                          : theme === "dark"
+                            ? "text-[#8e8e93]"
+                            : "text-gray-500"
+                      }`}
                     >
                       {mName}
                     </span>
                     <span
-                      className={`text-[11px] font-semibold ${activeLimit ? (theme === "dark" ? "text-white" : "text-black") : theme === "dark" ? "text-white/30" : "text-black/30"}`}
+                      className={`text-[11px] font-semibold transition-colors ${
+                        activeLimit
+                          ? theme === "dark"
+                            ? "text-white"
+                            : "text-black"
+                          : theme === "dark"
+                            ? "text-white/30"
+                            : "text-black/30"
+                      }`}
                     >
                       {activeLimit ? formatCompact(activeLimit) : "-"}
                     </span>
