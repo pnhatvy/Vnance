@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Delete, Calendar, Repeat, Clock, Timer, Check } from "lucide-react";
+import { Delete, Calendar, Repeat, Clock, Timer, Check } from "lucide-react";
 import { useAppContext } from "../AppContext";
 
 export default function AddTransaction() {
@@ -11,10 +11,7 @@ export default function AddTransaction() {
   const [type, setType] = useState("expense");
   const [note, setNote] = useState("");
   const [repeat, setRepeat] = useState("none");
-
-  // Trạng thái: "idle" | "scanning" | "success"
   const [saveState, setSaveState] = useState("idle");
-
   const [pastNotes, setPastNotes] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
 
@@ -26,7 +23,6 @@ export default function AddTransaction() {
     const tzOffset = now.getTimezoneOffset() * 60000;
     return new Date(now - tzOffset).toISOString().slice(0, 10);
   };
-
   const getCurrentTime = () => {
     const now = new Date();
     const tzOffset = now.getTimezoneOffset() * 60000;
@@ -47,11 +43,9 @@ export default function AddTransaction() {
     const txs = JSON.parse(localStorage.getItem("vys_transactions") || "[]");
     const noteFreq = new Map();
     const now = new Date();
-
     txs.forEach((t) => {
       const txDate = new Date(t.date.replace(" ", "T"));
       if (txDate > now) return;
-
       if (
         t.note &&
         t.note.trim() !== "" &&
@@ -60,35 +54,28 @@ export default function AddTransaction() {
         t.category
       ) {
         const key = t.note.toLowerCase().trim();
-        if (!noteFreq.has(key)) {
+        if (!noteFreq.has(key))
           noteFreq.set(key, {
             note: t.note,
             category: t.category,
             type: t.type,
             count: 1,
           });
-        } else {
-          noteFreq.get(key).count += 1;
-        }
+        else noteFreq.get(key).count += 1;
       }
     });
-
-    const sortedNotes = Array.from(noteFreq.values()).sort(
-      (a, b) => b.count - a.count,
+    setPastNotes(
+      Array.from(noteFreq.values()).sort((a, b) => b.count - a.count),
     );
-    setPastNotes(sortedNotes);
   }, []);
 
   useEffect(() => {
-    if (!note.trim()) {
-      setSuggestions(pastNotes.slice(0, 2));
-    }
+    if (!note.trim()) setSuggestions(pastNotes.slice(0, 2));
   }, [note, pastNotes]);
 
   const handleNoteChange = (e) => {
     const val = e.target.value;
     setNote(val);
-
     if (val.trim()) {
       const matches = pastNotes.filter(
         (n) =>
@@ -96,9 +83,7 @@ export default function AddTransaction() {
           n.note.toLowerCase() !== val.toLowerCase(),
       );
       setSuggestions(matches.slice(0, 2));
-    } else {
-      setSuggestions(pastNotes.slice(0, 2));
-    }
+    } else setSuggestions(pastNotes.slice(0, 2));
   };
 
   const acceptSuggestion = (sObj) => {
@@ -111,14 +96,13 @@ export default function AddTransaction() {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-
     let startY = 0,
       startX = 0,
-      currentY = 0;
-    let isDragging = false,
+      currentY = 0,
+      isDragging = false,
       isClosing = false,
-      dragDirection = null;
-    let rafId = null;
+      dragDirection = null,
+      rafId = null;
 
     const handleTouchStart = (e) => {
       if (container.scrollTop > 0) return;
@@ -133,16 +117,13 @@ export default function AddTransaction() {
 
     const handleTouchMove = (e) => {
       if (!isDragging || isClosing) return;
-      const diffX = e.touches[0].clientX - startX;
-      const diffY = e.touches[0].clientY - startY;
-
+      const diffX = e.touches[0].clientX - startX,
+        diffY = e.touches[0].clientY - startY;
       if (!dragDirection) {
         if (Math.abs(diffX) > Math.abs(diffY)) dragDirection = "horizontal";
         else dragDirection = "vertical";
       }
-
       if (dragDirection === "horizontal") return;
-
       if (
         dragDirection === "vertical" &&
         diffY > 0 &&
@@ -150,7 +131,6 @@ export default function AddTransaction() {
       ) {
         e.preventDefault();
         currentY = diffY;
-
         if (rafId) cancelAnimationFrame(rafId);
         rafId = requestAnimationFrame(() => {
           container.style.transform = `translate3d(0, ${currentY}px, 0)`;
@@ -162,10 +142,8 @@ export default function AddTransaction() {
       if (!isDragging || isClosing) return;
       isDragging = false;
       if (rafId) cancelAnimationFrame(rafId);
-
       container.style.transition =
         "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)";
-
       if (currentY > 150) {
         isClosing = true;
         container.style.transform = `translate3d(0, 100dvh, 0)`;
@@ -183,7 +161,6 @@ export default function AddTransaction() {
       passive: false,
     });
     container.addEventListener("touchend", handleTouchEnd);
-
     return () => {
       container.removeEventListener("touchstart", handleTouchStart);
       container.removeEventListener("touchmove", handleTouchMove);
@@ -192,21 +169,9 @@ export default function AddTransaction() {
     };
   }, [navigate]);
 
-  const handleCloseButton = () => {
-    if (containerRef.current) {
-      containerRef.current.style.transition =
-        "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)";
-      containerRef.current.style.transform = `translate3d(0, 100dvh, 0)`;
-    }
-    setTimeout(() => navigate("/"), 300);
-  };
-
   useEffect(() => {
-    if (categoryListRef.current) {
-      categoryListRef.current.scrollLeft = 0;
-    }
+    if (categoryListRef.current) categoryListRef.current.scrollLeft = 0;
     setCategory(currentCategories[0] || {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, categories]);
 
   const handleKeyPress = (val) => {
@@ -220,7 +185,6 @@ export default function AddTransaction() {
       else if (amount.length < 12) setAmount(amount + val);
     }
   };
-
   const handleDelete = () => {
     if (amount.length <= 1) setAmount("0");
     else setAmount(amount.slice(0, -1));
@@ -230,26 +194,22 @@ export default function AddTransaction() {
     try {
       const numericAmount = Number(amount.replace(",", "."));
       const baseDate = new Date(`${datePart}T${timePart}`);
-
       let count = 1;
       if (repeat === "daily") count = 365;
       if (repeat === "weekly") count = 104;
       if (repeat === "monthly") count = 60;
       if (repeat === "yearly") count = 10;
-
       const newTransactions = [];
       const groupId = "rep_" + Date.now();
       const existingData = JSON.parse(
         localStorage.getItem("vys_transactions") || "[]",
       );
-
       for (let i = 0; i < count; i++) {
         const d = new Date(baseDate);
         if (repeat === "daily") d.setDate(d.getDate() + i);
         if (repeat === "weekly") d.setDate(d.getDate() + i * 7);
         if (repeat === "monthly") d.setMonth(d.getMonth() + i);
         if (repeat === "yearly") d.setFullYear(d.getFullYear() + i);
-
         newTransactions.push({
           id: Date.now().toString() + "_" + i,
           amount: numericAmount,
@@ -264,9 +224,10 @@ export default function AddTransaction() {
           repeatMode: repeat !== "none" ? repeat : null,
         });
       }
-
-      const updated = [...newTransactions, ...existingData];
-      localStorage.setItem("vys_transactions", JSON.stringify(updated));
+      localStorage.setItem(
+        "vys_transactions",
+        JSON.stringify([...newTransactions, ...existingData]),
+      );
       navigate("/");
     } catch (e) {
       console.error(e);
@@ -276,28 +237,15 @@ export default function AddTransaction() {
 
   const handleSave = () => {
     if (amount === "0" || amount === ",") return;
-
-    // 1. Kích hoạt hiệu ứng quay Loading
-    setSaveState("scanning");
-
-    // 2. Chuyển sang Dấu Check thành công sau 0.6 giây
+    setSaveState("success");
     setTimeout(() => {
-      setSaveState("success");
-
-      // 3. Giữ dấu tick 0.7 giây rồi trượt modal xuống
-      setTimeout(() => {
-        if (containerRef.current) {
-          containerRef.current.style.transition =
-            "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)";
-          containerRef.current.style.transform = `translate3d(0, 100dvh, 0)`;
-        }
-
-        // 4. Lưu data và redirect
-        setTimeout(() => {
-          performSave();
-        }, 400);
-      }, 700);
-    }, 600);
+      if (containerRef.current) {
+        containerRef.current.style.transition =
+          "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)";
+        containerRef.current.style.transform = `translate3d(0, 100dvh, 0)`;
+      }
+      setTimeout(() => performSave(), 400);
+    }, 400);
   };
 
   const displayAmount = () => {
@@ -330,13 +278,7 @@ export default function AddTransaction() {
         ></div>
       </div>
 
-      <div className="flex justify-between items-center mb-5 flex-shrink-0">
-        <button
-          onClick={handleCloseButton}
-          className={`p-1 active:opacity-50 flex-shrink-0 w-[42px] ${theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
-        >
-          <X size={26} />
-        </button>
+      <div className="flex justify-center items-center mb-5 flex-shrink-0">
         <div
           className={`relative flex rounded-full p-1 w-[200px] ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-gray-200"}`}
         >
@@ -356,7 +298,6 @@ export default function AddTransaction() {
             Income
           </button>
         </div>
-        <div className="w-[42px] flex-shrink-0"></div>
       </div>
 
       <div
@@ -402,7 +343,6 @@ export default function AddTransaction() {
           </span>
           <span>{displayAmount()}</span>
         </div>
-
         <div className="h-5 flex items-center justify-center mb-1">
           {calculatedHours() && (
             <span
@@ -414,7 +354,6 @@ export default function AddTransaction() {
             </span>
           )}
         </div>
-
         <div className="relative w-full flex flex-col items-center">
           <input
             type="text"
@@ -424,7 +363,6 @@ export default function AddTransaction() {
             onTouchStart={(e) => e.stopPropagation()}
             className={`bg-transparent text-center focus:outline-none w-3/4 py-1 ${theme === "dark" ? "text-[#8e8e93] placeholder:text-[#8e8e93]/50" : "text-gray-600 placeholder:text-gray-400"}`}
           />
-
           {suggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-2 flex overflow-x-auto scrollbar-hide px-5 py-1 z-50">
               <div className="flex gap-2.5 mx-auto w-max">
@@ -552,61 +490,20 @@ export default function AddTransaction() {
         </button>
       </div>
 
-      {/* APPLE FACE-ID STYLE BUTTON */}
       <button
         onClick={(e) => {
           e.stopPropagation();
           if (saveState === "idle") handleSave();
         }}
-        className={`relative w-full h-[54px] rounded-full font-bold text-[17px] transition-colors duration-300 flex items-center justify-center flex-shrink-0 overflow-hidden
-        ${saveState !== "idle" ? "pointer-events-none" : "active:scale-[0.98] transition-transform"}
-        ${
-          saveState === "success"
-            ? "bg-[#32d74b] text-white"
-            : theme === "dark"
-              ? "bg-white text-black"
-              : "bg-black text-white"
-        }`}
+        className={`relative w-full h-[54px] rounded-full font-bold text-[17px] transition-colors duration-300 flex items-center justify-center flex-shrink-0 overflow-hidden ${saveState !== "idle" ? "pointer-events-none" : "active:scale-[0.98] transition-transform"} ${saveState === "success" ? "bg-[#32d74b] text-white" : theme === "dark" ? "bg-white text-black" : "bg-black text-white"}`}
       >
-        {/* 1. Chữ "Save" gốc */}
         <span
-          className={`absolute inset-0 flex items-center justify-center transition-all duration-300 
-          ${saveState === "idle" ? "opacity-100 scale-100" : "opacity-0 scale-75"}`}
+          className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${saveState === "idle" ? "opacity-100 scale-100" : "opacity-0 scale-75"}`}
         >
           Save
         </span>
-
-        {/* 2. Hiệu ứng quét Spinner mượt */}
         <span
-          className={`absolute inset-0 flex items-center justify-center transition-all duration-300 
-          ${saveState === "scanning" ? "opacity-100 scale-100" : "opacity-0 scale-50"}`}
-        >
-          <svg
-            className="w-6 h-6 text-current animate-spin"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="3"
-            ></circle>
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-        </span>
-
-        {/* 3. Dấu Checkmark thành công nảy bung */}
-        <span
-          className={`absolute inset-0 flex items-center justify-center transition-all duration-500 delay-75 
-          ${saveState === "success" ? "opacity-100 scale-100" : "opacity-0 scale-[0.2]"}`}
+          className={`absolute inset-0 flex items-center justify-center transition-all duration-500 delay-75 ${saveState === "success" ? "opacity-100 scale-100" : "opacity-0 scale-[0.2]"}`}
           style={{
             transitionTimingFunction:
               saveState === "success"

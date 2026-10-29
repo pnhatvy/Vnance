@@ -18,10 +18,12 @@ export default function Analytics() {
   const [limitScope, setLimitScope] = useState("all");
   const [limitForm, setLimitForm] = useState({ categoryId: null, amount: "0" });
   const [limitMonthKey, setLimitMonthKey] = useState("");
+  const [limitYear, setLimitYear] = useState(new Date().getFullYear());
   const [saveLimitSuccess, setSaveLimitSuccess] = useState(false);
   const [, setGoalsTrigger] = useState(0);
   const rawDataRef = useRef({ tx: "", goals: "", limits: "", mLimits: "" });
   const detailContainerRef = useRef(null);
+  const limitModalRef = useRef(null);
 
   useEffect(() => {
     const loadData = () => {
@@ -30,9 +32,9 @@ export default function Analytics() {
         rawDataRef.current.tx = txRaw;
         setTransactions(JSON.parse(txRaw));
       }
-      const gRaw1 = localStorage.getItem("vys_monthly_goals") || "{}";
-      const gRaw2 = localStorage.getItem("vys_global_goals") || "{}";
-      const combinedGoals = gRaw1 + gRaw2;
+      const combinedGoals =
+        (localStorage.getItem("vys_monthly_goals") || "{}") +
+        (localStorage.getItem("vys_global_goals") || "{}");
       if (combinedGoals !== rawDataRef.current.goals) {
         rawDataRef.current.goals = combinedGoals;
         setGoalsTrigger((prev) => prev + 1);
@@ -71,7 +73,6 @@ export default function Analytics() {
       "Nov",
       "Dec",
     ];
-
     if (timeFilter === "week") {
       const targetDate = new Date(
         base.getFullYear(),
@@ -102,9 +103,9 @@ export default function Analytics() {
       end = new Date(start);
       end.setMonth(end.getMonth() + 1);
       monthKey = `${start.getFullYear()}-${(start.getMonth() + 1).toString().padStart(2, "0")}`;
-      if (cycleStartDay === 1) {
+      if (cycleStartDay === 1)
         label = `${months[start.getMonth()]} ${start.getFullYear()}`;
-      } else {
+      else {
         let endLabel = new Date(end);
         endLabel.setDate(endLabel.getDate() - 1);
         label = `${months[start.getMonth()]} ${start.getDate()} - ${months[endLabel.getMonth()]} ${endLabel.getDate()}`;
@@ -121,7 +122,6 @@ export default function Analytics() {
   const bounds = getPeriodBounds();
   let currentBudget = 0;
   let currentIncomeGoal = 0;
-
   try {
     const glob = JSON.parse(localStorage.getItem("vys_global_goals") || "{}");
     const mGoals = JSON.parse(
@@ -142,30 +142,26 @@ export default function Analytics() {
         autoSum += Number(activeVal) || 0;
       });
     }
-
     if (timeFilter === "month") {
       if (
         mGoals[bounds.monthKey] &&
         mGoals[bounds.monthKey].budget !== undefined
-      ) {
+      )
         currentBudget = Number(mGoals[bounds.monthKey].budget);
-      } else if (autoSum > 0) {
-        currentBudget = autoSum;
-      } else {
+      else if (autoSum > 0) currentBudget = autoSum;
+      else
         currentBudget = Number(
           glob.expense || glob.budget || monthlyBudget || 0,
         );
-      }
       if (
         mGoals[bounds.monthKey] &&
         mGoals[bounds.monthKey].income !== undefined
-      ) {
+      )
         currentIncomeGoal = Number(mGoals[bounds.monthKey].income);
-      } else {
+      else
         currentIncomeGoal = Number(
           glob.incomeGoal || glob.income || monthlyIncomeGoal || 0,
         );
-      }
     } else {
       currentBudget = Number(glob.expense || glob.budget || monthlyBudget || 0);
       currentIncomeGoal = Number(
@@ -221,17 +217,17 @@ export default function Analytics() {
     setTimeout(() => setSelectedCategory(null), 300);
   };
 
+  // Swipe for Detail
   useEffect(() => {
     const container = detailContainerRef.current;
     if (!container || !showDetail) return;
     let startY = 0,
       startX = 0,
-      currentY = 0;
-    let isDragging = false,
+      currentY = 0,
+      isDragging = false,
       isClosing = false,
-      dragDirection = null;
-    let rafId = null;
-
+      dragDirection = null,
+      rafId = null;
     const handleTouchStart = (e) => {
       if (container.scrollTop > 0 || isClosing) return;
       startX = e.touches[0].clientX;
@@ -240,11 +236,10 @@ export default function Analytics() {
       dragDirection = null;
       container.style.transition = "none";
     };
-
     const handleTouchMove = (e) => {
       if (!isDragging || isClosing) return;
-      const diffX = e.touches[0].clientX - startX;
-      const diffY = e.touches[0].clientY - startY;
+      const diffX = e.touches[0].clientX - startX,
+        diffY = e.touches[0].clientY - startY;
       if (!dragDirection) {
         if (Math.abs(diffX) > Math.abs(diffY)) dragDirection = "horizontal";
         else dragDirection = "vertical";
@@ -263,7 +258,6 @@ export default function Analytics() {
         });
       }
     };
-
     const handleTouchEnd = () => {
       if (!isDragging || isClosing) return;
       isDragging = false;
@@ -282,7 +276,6 @@ export default function Analytics() {
         container.style.transform = `translate3d(0, 0px, 0)`;
       }
     };
-
     container.addEventListener("touchstart", handleTouchStart, {
       passive: false,
     });
@@ -290,7 +283,6 @@ export default function Analytics() {
       passive: false,
     });
     container.addEventListener("touchend", handleTouchEnd);
-
     return () => {
       container.removeEventListener("touchstart", handleTouchStart);
       container.removeEventListener("touchmove", handleTouchMove);
@@ -298,6 +290,77 @@ export default function Analytics() {
       if (rafId) cancelAnimationFrame(rafId);
     };
   }, [showDetail]);
+
+  // Swipe for Limit Modal
+  useEffect(() => {
+    const container = limitModalRef.current;
+    if (!container || !showLimitModal) return;
+    let startY = 0,
+      startX = 0,
+      currentY = 0,
+      isDragging = false,
+      isClosing = false,
+      dragDirection = null,
+      rafId = null;
+    const handleTouchStart = (e) => {
+      if (container.scrollTop > 0 || isClosing) return;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      isDragging = true;
+      dragDirection = null;
+      container.style.transition = "none";
+    };
+    const handleTouchMove = (e) => {
+      if (!isDragging || isClosing) return;
+      const diffX = e.touches[0].clientX - startX,
+        diffY = e.touches[0].clientY - startY;
+      if (!dragDirection) {
+        if (Math.abs(diffX) > Math.abs(diffY)) dragDirection = "horizontal";
+        else dragDirection = "vertical";
+      }
+      if (dragDirection === "horizontal") return;
+      if (
+        dragDirection === "vertical" &&
+        diffY > 0 &&
+        container.scrollTop <= 0
+      ) {
+        e.preventDefault();
+        currentY = diffY;
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+          container.style.transform = `translate3d(0, ${currentY}px, 0)`;
+        });
+      }
+    };
+    const handleTouchEnd = () => {
+      if (!isDragging || isClosing) return;
+      isDragging = false;
+      if (rafId) cancelAnimationFrame(rafId);
+      container.style.transition =
+        "transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)";
+      if (currentY > 150) {
+        isClosing = true;
+        container.style.transform = `translate3d(0, 100dvh, 0)`;
+        setTimeout(() => closeLimitModal(), 300);
+      } else {
+        currentY = 0;
+        container.style.transform = `translate3d(0, 0px, 0)`;
+      }
+    };
+    container.addEventListener("touchstart", handleTouchStart, {
+      passive: false,
+    });
+    container.addEventListener("touchmove", handleTouchMove, {
+      passive: false,
+    });
+    container.addEventListener("touchend", handleTouchEnd);
+    return () => {
+      container.removeEventListener("touchstart", handleTouchStart);
+      container.removeEventListener("touchmove", handleTouchMove);
+      container.removeEventListener("touchend", handleTouchEnd);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [showLimitModal]);
 
   let totalAmount = 0;
   let catMap = {};
@@ -309,14 +372,12 @@ export default function Analytics() {
       catMap[catId].spent += item.amount;
     }
   });
-
   const categoryData = Object.values(catMap)
     .map((cat) => ({
       ...cat,
       percent: totalAmount > 0 ? (cat.spent / totalAmount) * 100 : 0,
     }))
     .sort((a, b) => b.spent - a.spent);
-
   const budgetLeft =
     typeFilter === "expense"
       ? currentBudget - totalAmount
@@ -335,11 +396,9 @@ export default function Analytics() {
     bounds.start.getMonth(),
     bounds.start.getDate(),
   );
-
   let daysPassed = Math.round((todayStart - periodStart) / 86400000) + 1;
   if (daysPassed > daysInCycle) daysPassed = daysInCycle;
   if (daysPassed < 1) daysPassed = 1;
-
   const dailyAverage = totalAmountPast / daysPassed;
   const onPaceFor = isCurrentPeriod
     ? dailyAverage * daysInCycle + futureDataTotal
@@ -379,10 +438,8 @@ export default function Analytics() {
     setSaveLimitSuccess(false);
     const localLimit = monthlyCatLimits[mKey]?.[catId];
     const globalLimit = catLimits[catId];
-
     let amountToSet = "0";
     let newScope = preserveScope ? limitScope : "month";
-
     if (localLimit !== undefined) {
       amountToSet = localLimit.toString().replace(".", ",");
       if (!preserveScope) newScope = "month";
@@ -390,7 +447,6 @@ export default function Analytics() {
       amountToSet = globalLimit.toString().replace(".", ",");
       if (!preserveScope) newScope = "all";
     }
-
     setLimitForm({ categoryId: catId, amount: amountToSet });
     setLimitScope(newScope);
   };
@@ -403,6 +459,7 @@ export default function Analytics() {
       mKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}`;
     }
     setLimitMonthKey(mKey);
+    setLimitYear(parseInt(mKey.split("-")[0])); // Lấy năm của tháng hiện tại
     const activeCats = categories.filter((c) => c.type === typeFilter);
     if (activeCats.length > 0) loadFormForCat(activeCats[0].id, mKey, false);
     setShowLimitModal(true);
@@ -411,6 +468,32 @@ export default function Analytics() {
   const closeLimitModal = () => {
     setShowLimitModal(false);
     setSaveLimitSuccess(false);
+  };
+
+  const handlePrevYear = () => {
+    setLimitYear((y) => {
+      const newY = y - 1;
+      if (limitMonthKey) {
+        const currentMonth = limitMonthKey.split("-")[1];
+        const newKey = `${newY}-${currentMonth}`;
+        setLimitMonthKey(newKey);
+        loadFormForCat(limitForm.categoryId, newKey, true);
+      }
+      return newY;
+    });
+  };
+
+  const handleNextYear = () => {
+    setLimitYear((y) => {
+      const newY = y + 1;
+      if (limitMonthKey) {
+        const currentMonth = limitMonthKey.split("-")[1];
+        const newKey = `${newY}-${currentMonth}`;
+        setLimitMonthKey(newKey);
+        loadFormForCat(limitForm.categoryId, newKey, true);
+      }
+      return newY;
+    });
   };
 
   const handleSaveLimit = () => {
@@ -426,7 +509,6 @@ export default function Analytics() {
         "vys_category_limits",
         JSON.stringify(newGlobalLimits),
       );
-
       const newMonthlyLimits = { ...monthlyCatLimits };
       if (newMonthlyLimits[targetMonthKey]) {
         delete newMonthlyLimits[targetMonthKey][limitForm.categoryId];
@@ -451,20 +533,17 @@ export default function Analytics() {
     } else if (limitScope === "future") {
       const newMonthlyLimits = { ...monthlyCatLimits };
       let [year, month] = targetMonthKey.split("-").map(Number);
-
       for (let i = 0; i < 24; i++) {
         let mStr = month.toString().padStart(2, "0");
         let key = `${year}-${mStr}`;
         if (!newMonthlyLimits[key]) newMonthlyLimits[key] = {};
         newMonthlyLimits[key][limitForm.categoryId] = numericAmount;
-
         month++;
         if (month > 12) {
           month = 1;
           year++;
         }
       }
-
       setMonthlyCatLimits(newMonthlyLimits);
       localStorage.setItem(
         "vys_monthly_category_limits",
@@ -478,7 +557,6 @@ export default function Analytics() {
         "vys_category_limits",
         JSON.stringify(newGlobalLimits),
       );
-
       const newMonthlyLimits = { ...monthlyCatLimits };
       if (
         newMonthlyLimits[targetMonthKey] &&
@@ -506,6 +584,18 @@ export default function Analytics() {
       : parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
+  // Helper format thu gọn chữ số Limit vào box (VD: 500000 -> 500K)
+  const formatCompact = (val) => {
+    if (!val) return "";
+    const num = Number(val);
+    if (num >= 1000000000)
+      return (num / 1000000000).toFixed(1).replace(/\.0$/, "") + "B";
+    if (num >= 1000000)
+      return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+    if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, "") + "K";
+    return num.toString();
+  };
+
   const globalGroupedData = filteredData.reduce((acc, tran) => {
     const d = new Date(tran.date.replace(" ", "T"));
     d.setHours(0, 0, 0, 0);
@@ -514,19 +604,15 @@ export default function Analytics() {
     acc[dateKey] += tran.amount;
     return acc;
   }, {});
-
   const sparklineData = [];
   const iterDate = new Date(bounds.start);
   iterDate.setHours(0, 0, 0, 0);
-
   const endIterDate = isCurrentPeriod ? new Date() : new Date(bounds.end);
   if (isCurrentPeriod) endIterDate.setHours(23, 59, 59, 999);
-
   while (iterDate <= endIterDate) {
     sparklineData.push(globalGroupedData[iterDate.getTime()] || 0);
     iterDate.setDate(iterDate.getDate() + 1);
   }
-
   let sparklinePoints = "";
   if (sparklineData.length > 1) {
     const maxVal = Math.max(...sparklineData, 1);
@@ -537,9 +623,7 @@ export default function Analytics() {
         return `${x},${y}`;
       })
       .join(" ");
-  } else if (sparklineData.length === 1) {
-    sparklinePoints = "0,20 100,20";
-  }
+  } else if (sparklineData.length === 1) sparklinePoints = "0,20 100,20";
 
   return (
     <>
@@ -565,8 +649,6 @@ export default function Analytics() {
                 Income
               </button>
             </div>
-
-            {/* Cập nhật lại bộ lọc Week/Month/Year hiện rõ chữ nhưng vẫn gọn gàng */}
             <div
               className={`flex gap-1 p-1 rounded-full ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-gray-200"}`}
             >
@@ -588,7 +670,6 @@ export default function Analytics() {
               ))}
             </div>
           </div>
-
           <div className="flex justify-between items-center">
             <button
               onClick={() => setOffset((o) => o - 1)}
@@ -653,7 +734,6 @@ export default function Analytics() {
           className="flex-1 overflow-y-auto px-5 pt-3 pb-32 overscroll-y-auto scrollbar-hide"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
-          {/* Cập nhật Box: Thêm viền mờ và Shadow */}
           <div
             className={`rounded-3xl p-5 mb-6 border ${theme === "dark" ? "bg-[#1c1c1e] border-white/5 shadow-md" : "bg-white border-black/5 shadow-[0_4px_12px_rgba(0,0,0,0.03)]"}`}
           >
@@ -680,7 +760,6 @@ export default function Analytics() {
                 </div>
               )}
             </div>
-
             <div className="h-12 relative w-full overflow-hidden mb-2">
               {sparklinePoints && (
                 <svg
@@ -700,7 +779,6 @@ export default function Analytics() {
                 </svg>
               )}
             </div>
-
             {isCurrentPeriod &&
               typeFilter === "expense" &&
               timeFilter === "month" && (
@@ -735,7 +813,6 @@ export default function Analytics() {
             )}
           </div>
 
-          {/* Đưa danh sách Category vào Box để không bị tràn viền */}
           <div
             className={`rounded-2xl px-5 pt-4 pb-2 border ${theme === "dark" ? "bg-[#1c1c1e] border-white/5 shadow-md" : "bg-white border-black/5 shadow-[0_4px_12px_rgba(0,0,0,0.03)]"}`}
           >
@@ -771,13 +848,11 @@ export default function Analytics() {
                 </p>
               )}
             </div>
-
             <div className="flex flex-col gap-1">
               {categoryData.map((cat, idx) => {
                 let displayPercent = cat.percent;
                 let limitAmt = null;
                 let isOver = false;
-
                 if (currentViewMode === "limit") {
                   const activeLimit =
                     monthlyCatLimits[bounds.monthKey]?.[cat.id] ??
@@ -788,7 +863,6 @@ export default function Analytics() {
                     isOver = displayPercent > 100;
                   } else displayPercent = null;
                 }
-
                 return (
                   <div
                     key={cat.id}
@@ -807,7 +881,6 @@ export default function Analytics() {
                             <span className="font-bold text-[15px] leading-tight">
                               {cat.name}
                             </span>
-                            {/* Trả Limit về vị trí ban đầu (dưới tên Category) */}
                             {currentViewMode === "limit" && limitAmt && (
                               <span className="text-[12px] font-medium text-[#8e8e93] leading-tight mt-0.5">
                                 Limit: ₫{limitAmt.toLocaleString("vi-VN")}
@@ -822,9 +895,7 @@ export default function Analytics() {
                           </span>
                         </div>
                       </div>
-
                       <div className="flex items-center justify-between gap-4 mt-1">
-                        {/* Trả thanh Progress và Line trung bình ngày (pacePercent) về như thiết kế gốc */}
                         <div className="flex-1 h-1 relative flex items-center">
                           <div
                             className={`absolute inset-0 rounded-full overflow-hidden ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-200"}`}
@@ -862,7 +933,6 @@ export default function Analytics() {
                         </span>
                       </div>
                     </div>
-                    {/* Đường Line phân cách giữa các Category */}
                     {idx !== categoryData.length - 1 && (
                       <div
                         className={`absolute bottom-0 left-4 right-1 h-[1px] ${theme === "dark" ? "bg-white/5" : "bg-black/5"}`}
@@ -883,80 +953,56 @@ export default function Analytics() {
 
       {showLimitModal && (
         <div
-          className="fixed inset-0 bg-black/70 z-[60] flex flex-col justify-end animate-ios-fade"
-          onClick={closeLimitModal}
+          ref={limitModalRef}
+          className={`fixed inset-0 z-50 flex flex-col overflow-y-auto animate-ios-slide will-change-transform ${theme === "dark" ? "bg-black" : "bg-[#f2f2f7]"}`}
         >
+          {/* Header với Drag Handle - Cụm này sẽ giữ cố định lúc trượt */}
           <div
-            className={`w-full max-w-md mx-auto rounded-t-3xl p-5 pb-10 shadow-2xl animate-ios-slide ${theme === "dark" ? "bg-[#1c1c1e] text-white" : "bg-white text-black"}`}
-            onClick={(e) => e.stopPropagation()}
+            className={`flex-shrink-0 z-40 pb-3 px-4 flex flex-col items-center shadow-[0_1px_0_0_rgba(0,0,0,0.05)] ${theme === "dark" ? "bg-black/90 shadow-[0_1px_0_0_rgba(255,255,255,0.05)]" : "bg-[#f2f2f7]/90"}`}
+            style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
           >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-bold text-lg">Category Limit</h2>
-              <button
-                onClick={closeLimitModal}
-                className={`p-1.5 rounded-full ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-100"}`}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3 mb-5">
-              <span
-                className={`text-[13px] font-semibold ${theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
-              >
-                Target Month:
-              </span>
-              <input
-                type="month"
-                value={limitMonthKey}
-                onChange={(e) => {
-                  const newVal = e.target.value;
-                  if (newVal) {
-                    setLimitMonthKey(newVal);
-                    if (limitForm.categoryId)
-                      loadFormForCat(limitForm.categoryId, newVal, true);
-                  }
-                }}
-                className={`flex-1 p-2 rounded-xl text-[14px] font-bold outline-none ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-gray-100 text-black"}`}
-              />
-            </div>
-
             <div
-              className={`flex rounded-xl p-1 mb-5 w-full ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-gray-200"}`}
-            >
+              className={`w-14 h-1.5 rounded-full mb-3 ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-300"}`}
+            ></div>
+            <div className="flex justify-between items-center w-full">
+              <h2 className="font-bold text-[17px] text-center w-full absolute left-0 -z-10">
+                Category Limit
+              </h2>
+            </div>
+          </div>
+
+          <div className="flex-1 px-4 pt-6 pb-32">
+            {/* Chuyển năm */}
+            <div className="flex justify-between items-center mb-6 px-4">
               <button
-                onClick={() => setLimitScope("all")}
-                className={`flex-1 py-1.5 text-[12px] font-bold rounded-lg transition-colors duration-200 ${limitScope === "all" ? (theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black shadow-sm") : theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
+                onClick={handlePrevYear}
+                className={`p-2 text-[#32ade6] active:opacity-50 rounded-full transition-colors ${theme === "dark" ? "bg-[#32ade6]/20" : "bg-[#32ade6]/10"}`}
               >
-                All Time
+                <ChevronLeft size={20} />
               </button>
+              <span className="font-bold text-[20px] tracking-tight">
+                {limitYear}
+              </span>
               <button
-                onClick={() => setLimitScope("month")}
-                className={`flex-1 py-1.5 text-[12px] font-bold rounded-lg transition-colors duration-200 ${limitScope === "month" ? (theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black shadow-sm") : theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
+                onClick={handleNextYear}
+                className={`p-2 text-[#32ade6] active:opacity-50 rounded-full transition-colors ${theme === "dark" ? "bg-[#32ade6]/20" : "bg-[#32ade6]/10"}`}
               >
-                This Month
-              </button>
-              <button
-                onClick={() => setLimitScope("future")}
-                className={`flex-1 py-1.5 text-[12px] font-bold rounded-lg transition-colors duration-200 ${limitScope === "future" ? (theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-white text-black shadow-sm") : theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
-              >
-                This & Future
+                <ChevronRight size={20} />
               </button>
             </div>
 
-            <div className="flex overflow-x-auto flex-nowrap gap-3 mb-6 pb-2 scrollbar-hide">
+            {/* Thanh cuộn Category */}
+            <div className="flex overflow-x-auto flex-nowrap gap-2.5 mb-6 pb-2 scrollbar-hide items-center min-h-[50px]">
               {categories
                 .filter((c) => c.type === typeFilter)
                 .map((cat) => (
                   <button
                     key={cat.id}
                     onClick={() => loadFormForCat(cat.id, limitMonthKey, false)}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap transition-all border flex-shrink-0 ${limitForm.categoryId === cat.id ? (theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-200") : theme === "dark" ? "bg-[#2c2c2e]/40 border-transparent text-[#8e8e93]" : "bg-gray-50 border-transparent text-gray-400"}`}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-full transition-all border flex-shrink-0 ${limitForm.categoryId === cat.id ? (theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-200") : theme === "dark" ? "bg-[#1c1c1e] text-[#8e8e93] border-white/5" : "bg-white text-gray-500 border-black/5"}`}
                     style={{
                       borderColor:
-                        limitForm.categoryId === cat.id
-                          ? cat.color
-                          : "transparent",
+                        limitForm.categoryId === cat.id ? cat.color : undefined,
                     }}
                   >
                     <span>{cat.icon}</span>
@@ -969,52 +1015,124 @@ export default function Analytics() {
                 ))}
             </div>
 
-            <div className="relative w-full mb-2">
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="0"
-                value={
-                  limitForm.amount === "0"
-                    ? ""
-                    : formatDisplayAmount(limitForm.amount)
-                }
-                onChange={(e) => {
-                  setSaveLimitSuccess(false);
-                  let val = e.target.value
-                    .replace(/\./g, "")
-                    .replace(/[^0-9,]/g, "");
-                  if (val.split(",").length > 2) val = val.slice(0, -1);
-                  if (val === "") val = "0";
-                  setLimitForm({ ...limitForm, amount: val });
-                }}
-                className={`w-full rounded-2xl px-12 py-4 outline-none font-bold text-[24px] text-center ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-gray-100 text-black"}`}
-              />
-              {limitForm.amount !== "0" && (
-                <button
-                  onClick={() => {
-                    setSaveLimitSuccess(false);
-                    setLimitForm({ ...limitForm, amount: "0" });
-                  }}
-                  className={`absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-full active:opacity-60 transition-opacity ${theme === "dark" ? "bg-[#3a3a3c] text-[#8e8e93]" : "bg-gray-300 text-gray-600"}`}
-                >
-                  <X size={16} />
-                </button>
-              )}
+            {/* Lưới 12 tháng */}
+            <div className="grid grid-cols-4 gap-3 mb-8">
+              {[
+                "Jan",
+                "Feb",
+                "Mar",
+                "Apr",
+                "May",
+                "Jun",
+                "Jul",
+                "Aug",
+                "Sep",
+                "Oct",
+                "Nov",
+                "Dec",
+              ].map((mName, i) => {
+                const mKey = `${limitYear}-${(i + 1).toString().padStart(2, "0")}`;
+                const activeLimit =
+                  monthlyCatLimits[mKey]?.[limitForm.categoryId] ??
+                  catLimits[limitForm.categoryId];
+                const isSelected = limitMonthKey === mKey;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setLimitMonthKey(mKey);
+                      loadFormForCat(limitForm.categoryId, mKey, false);
+                    }}
+                    className={`p-3 rounded-2xl flex flex-col items-center justify-center border-2 transition-all ${isSelected ? (theme === "dark" ? "border-[#32ade6] bg-[#32ade6]/10" : "border-[#32ade6] bg-[#32ade6]/10") : theme === "dark" ? "border-transparent bg-[#1c1c1e]" : "border-transparent bg-white shadow-sm"}`}
+                  >
+                    <span
+                      className={`text-[13px] font-bold mb-1 ${isSelected ? "text-[#32ade6]" : theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
+                    >
+                      {mName}
+                    </span>
+                    <span
+                      className={`text-[11px] font-semibold ${activeLimit ? (theme === "dark" ? "text-white" : "text-black") : theme === "dark" ? "text-white/30" : "text-black/30"}`}
+                    >
+                      {activeLimit ? formatCompact(activeLimit) : "-"}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-            <div className="h-6 flex items-center justify-center mb-4">
-              {saveLimitSuccess && (
-                <span className="text-[13px] font-medium text-[#8e8e93] animate-ios-fade">
-                  Saved successfully
-                </span>
-              )}
-            </div>
-            <button
-              onClick={handleSaveLimit}
-              className={`w-full py-4 rounded-2xl font-bold text-[17px] active:scale-[0.98] transition-transform ${theme === "dark" ? "bg-white text-black" : "bg-black text-white"}`}
+
+            {/* Box Chỉnh sửa */}
+            <div
+              className={`rounded-3xl p-5 shadow-sm border mb-6 ${theme === "dark" ? "bg-[#1c1c1e] border-white/5" : "bg-white border-black/5"}`}
             >
-              Save Limit
-            </button>
+              <div
+                className={`flex rounded-xl p-1 mb-5 w-full ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-100"}`}
+              >
+                <button
+                  onClick={() => setLimitScope("all")}
+                  className={`flex-1 py-1.5 text-[12px] font-bold rounded-lg transition-colors duration-200 ${limitScope === "all" ? (theme === "dark" ? "bg-[#3a3a3c] text-white" : "bg-white text-black shadow-sm") : theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
+                >
+                  All Time
+                </button>
+                <button
+                  onClick={() => setLimitScope("month")}
+                  className={`flex-1 py-1.5 text-[12px] font-bold rounded-lg transition-colors duration-200 ${limitScope === "month" ? (theme === "dark" ? "bg-[#3a3a3c] text-white" : "bg-white text-black shadow-sm") : theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
+                >
+                  This Month
+                </button>
+                <button
+                  onClick={() => setLimitScope("future")}
+                  className={`flex-1 py-1.5 text-[12px] font-bold rounded-lg transition-colors duration-200 ${limitScope === "future" ? (theme === "dark" ? "bg-[#3a3a3c] text-white" : "bg-white text-black shadow-sm") : theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
+                >
+                  This & Future
+                </button>
+              </div>
+              <div className="relative w-full mb-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={
+                    limitForm.amount === "0"
+                      ? ""
+                      : formatDisplayAmount(limitForm.amount)
+                  }
+                  onChange={(e) => {
+                    setSaveLimitSuccess(false);
+                    let val = e.target.value
+                      .replace(/\./g, "")
+                      .replace(/[^0-9,]/g, "");
+                    if (val.split(",").length > 2) val = val.slice(0, -1);
+                    if (val === "") val = "0";
+                    setLimitForm({ ...limitForm, amount: val });
+                  }}
+                  className={`w-full rounded-2xl px-12 py-4 outline-none font-bold text-[24px] text-center ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-gray-100 text-black"}`}
+                />
+                {limitForm.amount !== "0" && (
+                  <button
+                    onClick={() => {
+                      setSaveLimitSuccess(false);
+                      setLimitForm({ ...limitForm, amount: "0" });
+                    }}
+                    className={`absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-full active:opacity-60 transition-opacity ${theme === "dark" ? "bg-[#3a3a3c] text-[#8e8e93]" : "bg-gray-300 text-gray-600"}`}
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+              <div className="h-6 flex items-center justify-center mb-4">
+                {saveLimitSuccess && (
+                  <span className="text-[13px] font-medium text-[#8e8e93] animate-ios-fade">
+                    Saved successfully
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={handleSaveLimit}
+                className={`w-full py-4 rounded-2xl font-bold text-[17px] active:scale-[0.98] transition-transform ${theme === "dark" ? "bg-white text-black" : "bg-black text-white"}`}
+              >
+                Save Limit
+              </button>
+            </div>
           </div>
         </div>
       )}

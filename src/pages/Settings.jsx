@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAppContext } from "../AppContext";
 import {
-  X,
   Moon,
   Menu,
   Trash2,
@@ -43,7 +42,6 @@ export default function Settings() {
   const [isResetting, setIsResetting] = useState(false);
   const [user, setUser] = useState(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-
   const [syncState, setSyncState] = useState({ type: null, status: null });
   const [lastBackupTime, setLastBackupTime] = useState(null);
   const [hourlyInput, setHourlyInput] = useState(workHourlyRate.toString());
@@ -66,7 +64,6 @@ export default function Settings() {
               }),
             );
           }
-
           if (!localStorage.getItem("vys_has_auto_restored")) {
             if (docSnap.exists()) {
               const data = docSnap.data();
@@ -185,7 +182,6 @@ export default function Settings() {
         workHourlyRate: localStorage.getItem("vys_hourly_rate") || "0",
         updatedAt: nowString,
       };
-
       await setDoc(doc(db, "users", user.uid), dataToBackup);
       setLastBackupTime(
         new Date(nowString).toLocaleString("vi-VN", {
@@ -255,7 +251,6 @@ export default function Settings() {
           );
         if (data.workHourlyRate)
           localStorage.setItem("vys_hourly_rate", data.workHourlyRate);
-
         setSyncState({ type: "restore", status: "success" });
         setTimeout(() => {
           setSyncState({ type: null, status: null });
@@ -425,11 +420,8 @@ export default function Settings() {
 
   const saveCategory = () => {
     if (!catForm.name.trim()) return;
-
     if (catForm.id) {
       setCategories(categories.map((c) => (c.id === catForm.id ? catForm : c)));
-
-      // TỰ ĐỘNG ĐỒNG BỘ CẢ LỊCH SỬ GIAO DỊCH
       const txs = JSON.parse(localStorage.getItem("vys_transactions") || "[]");
       let hasChanges = false;
       const updatedTxs = txs.map((t) => {
@@ -439,9 +431,8 @@ export default function Settings() {
         }
         return t;
       });
-      if (hasChanges) {
+      if (hasChanges)
         localStorage.setItem("vys_transactions", JSON.stringify(updatedTxs));
-      }
     } else {
       setCategories([...categories, { id: Date.now().toString(), ...catForm }]);
     }
@@ -514,11 +505,11 @@ export default function Settings() {
     >
       {list.map((c, index) => {
         const isDragging = dragState?.id === c.id;
-        let translateY = 0;
-        let zIndex = 1;
-        let scale = 1;
-        let shadow = "none";
-        let radius = "0px";
+        let translateY = 0,
+          zIndex = 1,
+          scale = 1,
+          shadow = "none",
+          radius = "0px";
         if (dragState && dragState.type === type) {
           if (isDragging) {
             const rawTranslateY = dragState.currentY - dragState.startY;
@@ -588,7 +579,7 @@ export default function Settings() {
                   }}
                   className="text-[#ff453a] active:opacity-50 p-2"
                 >
-                  <X size={18} />
+                  <Trash2 size={18} />
                 </button>
                 <div
                   onTouchStart={(e) => onTouchStart(e, c.id, index, type)}
@@ -695,27 +686,27 @@ export default function Settings() {
 
                   <div className="p-4 flex flex-col gap-3">
                     <div
-                      className={`flex rounded-xl p-1 w-full ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-100"}`}
+                      className={`flex gap-1 p-1 rounded-full ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-200"}`}
                     >
                       <button
                         onClick={handleBackup}
                         disabled={syncState.status === "loading"}
-                        className={`flex-1 flex justify-center items-center gap-2 py-2 text-[13px] font-bold rounded-lg transition-colors duration-200 active:opacity-70 disabled:opacity-50 ${theme === "dark" ? "bg-[#3a3a3c] text-white shadow-sm" : "bg-white text-black shadow-sm"}`}
+                        className={`flex-1 flex justify-center items-center gap-2 py-2 text-[13px] font-bold rounded-full transition-colors duration-200 active:opacity-70 disabled:opacity-50 ${syncState.type === "backup" ? (theme === "dark" ? "bg-[#3a3a3c] text-white shadow-sm" : "bg-white text-black shadow-sm") : theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
                       >
                         {syncState.type === "backup" &&
                         syncState.status === "loading" ? (
                           <span className="animate-pulse flex items-center gap-2">
-                            <CloudUpload size={16} /> Backing up...
+                            <CloudUpload size={16} />
                           </span>
                         ) : syncState.type === "backup" &&
                           syncState.status === "success" ? (
                           <span className="text-[#32d74b] flex items-center gap-2">
-                            <CheckCircle2 size={16} /> Success
+                            <CheckCircle2 size={16} /> Backup
                           </span>
                         ) : syncState.type === "backup" &&
                           syncState.status === "error" ? (
                           <span className="text-[#ff453a] flex items-center gap-2">
-                            <AlertCircle size={16} /> Failed
+                            <AlertCircle size={16} /> Error
                           </span>
                         ) : (
                           <>
@@ -732,22 +723,22 @@ export default function Settings() {
                       <button
                         onClick={handleRestore}
                         disabled={syncState.status === "loading"}
-                        className={`flex-1 flex justify-center items-center gap-2 py-2 text-[13px] font-bold rounded-lg transition-colors duration-200 active:opacity-70 disabled:opacity-50 ${theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
+                        className={`flex-1 flex justify-center items-center gap-2 py-2 text-[13px] font-bold rounded-full transition-colors duration-200 active:opacity-70 disabled:opacity-50 ${syncState.type === "restore" ? (theme === "dark" ? "bg-[#3a3a3c] text-white shadow-sm" : "bg-white text-black shadow-sm") : theme === "dark" ? "text-[#8e8e93]" : "text-gray-500"}`}
                       >
                         {syncState.type === "restore" &&
                         syncState.status === "loading" ? (
                           <span className="animate-pulse flex items-center gap-2">
-                            <CloudDownload size={16} /> Restoring...
+                            <CloudDownload size={16} />
                           </span>
                         ) : syncState.type === "restore" &&
                           syncState.status === "success" ? (
                           <span className="text-[#32d74b] flex items-center gap-2">
-                            <CheckCircle2 size={16} /> Success
+                            <CheckCircle2 size={16} /> Restore
                           </span>
                         ) : syncState.type === "restore" &&
                           syncState.status === "error" ? (
                           <span className="text-[#ff453a] flex items-center gap-2">
-                            <AlertCircle size={16} /> Failed
+                            <AlertCircle size={16} /> Error
                           </span>
                         ) : (
                           <>
@@ -788,7 +779,6 @@ export default function Settings() {
                   ></div>
                 </button>
               </div>
-
               <button
                 onClick={openHourlyModal}
                 className="w-full flex justify-between items-center p-4 text-left active:opacity-70 transition-opacity"
@@ -878,6 +868,7 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* Các Modal (Bỏ dấu X ở Modal) */}
       {modalType === "hourly" && (
         <div
           className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4 animate-ios-fade"
@@ -897,7 +888,6 @@ export default function Settings() {
             >
               Enter 0 to disable this feature.
             </p>
-
             <div
               className={`flex items-center rounded-2xl px-4 py-2 mb-6 ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-100"}`}
             >
@@ -1119,19 +1109,11 @@ export default function Settings() {
             className={`w-full max-w-[340px] rounded-[32px] p-6 shadow-2xl ${theme === "dark" ? "bg-[#1c1c1e]" : "bg-white"}`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-5">
-              <h2
-                className={`font-bold text-xl ${theme === "dark" ? "text-white" : "text-black"}`}
-              >
-                {catForm.id ? "Edit Category" : "Add Category"}
-              </h2>
-              <button
-                onClick={closeModals}
-                className={`p-1.5 rounded-full ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-gray-100 text-black"}`}
-              >
-                <X size={20} />
-              </button>
-            </div>
+            <h2
+              className={`font-bold text-center text-xl mb-5 ${theme === "dark" ? "text-white" : "text-black"}`}
+            >
+              {catForm.id ? "Edit Category" : "Add Category"}
+            </h2>
             <div
               className={`flex rounded-xl p-1 mb-4 ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-100"}`}
             >
@@ -1191,12 +1173,20 @@ export default function Settings() {
                 </div>
               ))}
             </div>
-            <button
-              onClick={saveCategory}
-              className={`w-full py-3.5 rounded-2xl font-bold text-[17px] active:scale-[0.98] transition-transform ${theme === "dark" ? "bg-white text-black" : "bg-black text-white"}`}
-            >
-              Save Category
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={closeModals}
+                className={`flex-1 py-3.5 rounded-2xl font-bold ${theme === "dark" ? "bg-[#2c2c2e] text-white" : "bg-gray-200 text-black"}`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveCategory}
+                className={`flex-1 py-3.5 rounded-2xl font-bold text-[17px] active:scale-[0.98] transition-transform ${theme === "dark" ? "bg-white text-black" : "bg-black text-white"}`}
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
       )}

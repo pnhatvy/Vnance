@@ -5,7 +5,6 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  XCircle,
   Eye,
   EyeOff,
 } from "lucide-react";
@@ -14,12 +13,11 @@ export default function Goals() {
   const { theme, cycleStartDay } = useAppContext();
 
   const [monthlyBudget, setMonthlyBudget] = useState(null);
-  const [manualBudgetOverride, setManualBudgetOverride] = useState(null); // Lưu trạng thái có đang ghi đè tay không
+  const [manualBudgetOverride, setManualBudgetOverride] = useState(null);
   const [monthlyIncome, setMonthlyIncome] = useState(null);
   const [offset, setOffset] = useState(0);
   const [spent, setSpent] = useState(0);
   const [earned, setEarned] = useState(0);
-
   const [globalIncomeGoal, setGlobalIncomeGoal] = useState(10000000);
   const [initialBalance, setInitialBalance] = useState(0);
   const [historicalNetWorth, setHistoricalNetWorth] = useState(0);
@@ -41,7 +39,6 @@ export default function Goals() {
     value: "",
     scope: "all",
   });
-
   const [isInputFocused, setIsInputFocused] = useState(false);
 
   useEffect(() => {
@@ -61,11 +58,9 @@ export default function Goals() {
     if (base.getDate() < cycleStartDay)
       currentStart.setMonth(currentStart.getMonth() - 1);
     currentStart.setMonth(currentStart.getMonth() + offset);
-
     const start = new Date(currentStart);
     const end = new Date(start);
     end.setMonth(end.getMonth() + 1);
-
     const months = [
       "Jan",
       "Feb",
@@ -81,18 +76,14 @@ export default function Goals() {
       "Dec",
     ];
     let label = "";
-
-    // Key chuẩn format YYYY-MM để so sánh thời gian (vd: "2026-10")
     const key = `${start.getFullYear()}-${(start.getMonth() + 1).toString().padStart(2, "0")}`;
-
-    if (cycleStartDay === 1) {
+    if (cycleStartDay === 1)
       label = `${months[start.getMonth()]} ${start.getFullYear()}`;
-    } else {
+    else {
       let endLabel = new Date(end);
       endLabel.setDate(endLabel.getDate() - 1);
       label = `${months[start.getMonth()]} ${start.getDate()} - ${months[endLabel.getMonth()]} ${endLabel.getDate()}`;
     }
-
     return { start, end, label, key };
   };
 
@@ -107,13 +98,11 @@ export default function Goals() {
         localStorage.getItem("vys_monthly_category_limits") || "{}",
       );
       const currentLocalLimits = mLimitsData[bounds.key] || {};
-
       let sum = 0;
       const allCategoryIds = new Set([
         ...Object.keys(gLimits),
         ...Object.keys(currentLocalLimits),
       ]);
-
       allCategoryIds.forEach((catId) => {
         const activeVal =
           currentLocalLimits[catId] !== undefined
@@ -128,26 +117,21 @@ export default function Goals() {
       localStorage.getItem("vys_monthly_goals") || "{}",
     );
     const glob = JSON.parse(localStorage.getItem("vys_global_goals") || "{}");
-
     let autoSum = calcAutoBudgetFromLimits();
 
-    // Tách bạch: Số nhập tay đè VS số Auto-sum
     if (mGoals[bounds.key] && mGoals[bounds.key].budget !== undefined) {
       setMonthlyBudget(Number(mGoals[bounds.key].budget));
       setManualBudgetOverride(Number(mGoals[bounds.key].budget));
     } else if (autoSum > 0) {
       setMonthlyBudget(autoSum);
-      setManualBudgetOverride(null); // Không có đè tay
+      setManualBudgetOverride(null);
     } else {
       setMonthlyBudget(Number(glob.expense || glob.budget || 0));
       setManualBudgetOverride(null);
     }
-
-    if (mGoals[bounds.key] && mGoals[bounds.key].income !== undefined) {
+    if (mGoals[bounds.key] && mGoals[bounds.key].income !== undefined)
       setMonthlyIncome(Number(mGoals[bounds.key].income));
-    } else {
-      setMonthlyIncome(null);
-    }
+    else setMonthlyIncome(null);
 
     const transactions = JSON.parse(
       localStorage.getItem("vys_transactions") || "[]",
@@ -155,7 +139,6 @@ export default function Goals() {
     const now = new Date();
     let totalSpentMonth = 0;
     let totalEarnedMonth = 0;
-
     transactions.forEach((t) => {
       const amount = Number(t.amount) || 0;
       if (t.date) {
@@ -166,7 +149,6 @@ export default function Goals() {
         }
       }
     });
-
     setSpent(totalSpentMonth);
     setEarned(totalEarnedMonth);
   }, [bounds.key, cycleStartDay, editState.isOpen]);
@@ -176,17 +158,15 @@ export default function Goals() {
       localStorage.getItem("vys_global_goals_history") || "{}",
     );
     let currentGlobalIncome = 10000000;
-
-    if (gGoals[bounds.key] && gGoals[bounds.key].income !== undefined) {
+    if (gGoals[bounds.key] && gGoals[bounds.key].income !== undefined)
       currentGlobalIncome = gGoals[bounds.key].income;
-    } else {
+    else {
       const oldGlob = JSON.parse(
         localStorage.getItem("vys_global_goals") || '{"income": 10000000}',
       );
       currentGlobalIncome =
         oldGlob.income !== undefined ? oldGlob.income : 10000000;
     }
-
     const currentInitBal = Number(
       localStorage.getItem("vys_initial_balance") || 0,
     );
@@ -201,12 +181,10 @@ export default function Goals() {
     let cumulativeSpent = 0;
     let totalExpenseAllTime = 0;
     let firstActualDate = null;
-
     transactions.forEach((t) => {
       const amount = Number(t.amount) || 0;
       if (t.date) {
         const d = new Date(t.date);
-        // Recurring entries are pre-created, so only count them once due.
         if (d <= now) {
           if (!firstActualDate || d < firstActualDate) firstActualDate = d;
           if (d < bounds.end) {
@@ -217,9 +195,7 @@ export default function Goals() {
         }
       }
     });
-
     setHistoricalNetWorth(currentInitBal + cumulativeEarned - cumulativeSpent);
-
     if (firstActualDate) {
       const monthsActive = Math.max(
         1,
@@ -229,15 +205,12 @@ export default function Goals() {
           1,
       );
       setAvgMonthlySpend(totalExpenseAllTime / monthsActive);
-    } else {
-      setAvgMonthlySpend(0);
-    }
+    } else setAvgMonthlySpend(0);
   }, [bounds.key, cycleStartDay, editState.isOpen]);
 
   const activeBudget = monthlyBudget || 0;
   const activeIncome =
     monthlyIncome !== null ? monthlyIncome : globalIncomeGoal;
-
   const spentPercent =
     activeBudget > 0 ? Math.round((spent / activeBudget) * 100) : 0;
   const earnedPercent =
@@ -254,7 +227,6 @@ export default function Goals() {
   const now = new Date();
   let expectedPacePercent = 0;
   let isCurrentCycle = false;
-
   if (now >= bounds.start && now < bounds.end) {
     isCurrentCycle = true;
     const totalDays = Math.round((bounds.end - bounds.start) / 86400000);
@@ -268,7 +240,6 @@ export default function Goals() {
     if (type === "m_income") title = "Edit Monthly Income";
     if (type === "g_income") title = "Edit Wallets Goal";
     if (type === "g_initial") title = "Set Initial Balance";
-
     setEditState({
       isOpen: true,
       type,
@@ -277,7 +248,6 @@ export default function Goals() {
       scope: type === "m_budget" ? "month" : "all",
     });
   };
-
   const handleInput = (val) => {
     const raw = val.replace(/\./g, "").replace(/\D/g, "");
     if (!raw) {
@@ -350,15 +320,12 @@ export default function Goals() {
         localStorage.getItem("vys_monthly_goals") || "{}",
       );
       if (numValue === 0) {
-        // MÁY HÚT BỤI: Xóa ghi đè tay của THÁNG NÀY và TOÀN BỘ CÁC THÁNG TƯƠNG LAI
         Object.keys(mGoals).forEach((key) => {
           if (key >= bounds.key) {
             delete mGoals[key].budget;
             if (Object.keys(mGoals[key]).length === 0) delete mGoals[key];
           }
         });
-
-        // Dọn rác global cũ cho sạch hoàn toàn
         const glob = JSON.parse(
           localStorage.getItem("vys_global_goals") || "{}",
         );
@@ -372,7 +339,6 @@ export default function Goals() {
       }
       localStorage.setItem("vys_monthly_goals", JSON.stringify(mGoals));
     }
-
     setEditState({ ...editState, isOpen: false });
     setIsInputFocused(false);
   };
@@ -450,17 +416,13 @@ export default function Goals() {
                 Spent:{" "}
                 {showMonthly ? `₫${spent.toLocaleString("vi-VN")}` : "****"}
               </span>
-              <span
-                className={spentPercent > 100 ? "text-[#ff453a] font-bold" : ""}
-              >
-                {showMonthly ? `${spentPercent}%` : "**%"}
-              </span>
+              <span>{showMonthly ? `${spentPercent}%` : "**%"}</span>
             </div>
             <div
               className={`h-2 rounded-full relative ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-100"}`}
             >
               <div
-                className={`absolute top-0 left-0 h-full rounded-full transition-all duration-700 ease-out ${spentPercent >= 100 ? "bg-[#ff453a]" : "bg-gray-300"}`}
+                className="absolute top-0 left-0 h-full rounded-full transition-all duration-700 ease-out bg-gray-300"
                 style={{ width: `${Math.min(spentPercent, 100)}%` }}
               ></div>
               {isCurrentCycle && (
@@ -500,19 +462,13 @@ export default function Goals() {
                 Earned:{" "}
                 {showMonthly ? `₫${earned.toLocaleString("vi-VN")}` : "****"}
               </span>
-              <span
-                className={
-                  earnedPercent >= 100 ? "text-[#32d74b] font-bold" : ""
-                }
-              >
-                {showMonthly ? `${earnedPercent}%` : "**%"}
-              </span>
+              <span>{showMonthly ? `${earnedPercent}%` : "**%"}</span>
             </div>
             <div
               className={`h-2 rounded-full overflow-hidden ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-100"}`}
             >
               <div
-                className={`h-full rounded-full transition-all duration-700 ease-out ${earnedPercent >= 100 ? "bg-[#32d74b]" : "bg-gray-300"}`}
+                className="h-full rounded-full transition-all duration-700 ease-out bg-gray-300"
                 style={{ width: `${Math.min(earnedPercent, 100)}%` }}
               ></div>
             </div>
@@ -549,26 +505,18 @@ export default function Goals() {
                 ? `₫${globalIncomeGoal.toLocaleString("vi-VN")}`
                 : "****"}
             </div>
-            <div className="flex justify-between items-center text-[12px] text-[#8e8e93] font-medium mb-2">
-              <span className="flex items-center gap-1.5">
+            <div className="flex justify-between items-center text-[12px] font-medium mb-2">
+              <span className="flex items-center gap-1.5 text-[#8e8e93]">
                 Net Worth:{" "}
                 <strong
-                  className={
-                    historicalNetWorth >= 0
-                      ? "text-[#32d74b]"
-                      : "text-[#ff453a]"
-                  }
+                  className={theme === "dark" ? "text-white" : "text-black"}
                 >
                   {showOverall
                     ? `${historicalNetWorth < 0 ? "-" : ""}₫${Math.abs(historicalNetWorth).toLocaleString("vi-VN")}`
                     : "****"}
                 </strong>
               </span>
-              <span
-                className={
-                  overallPercent >= 100 ? "text-[#32d74b] font-bold" : ""
-                }
-              >
+              <span className="text-[#8e8e93]">
                 {showOverall ? `${overallPercent}%` : "**%"}
               </span>
             </div>
@@ -576,7 +524,7 @@ export default function Goals() {
               className={`h-2 rounded-full overflow-hidden ${theme === "dark" ? "bg-[#2c2c2e]" : "bg-gray-100"}`}
             >
               <div
-                className={`h-full rounded-full transition-all duration-700 ease-out ${overallPercent >= 100 ? "bg-[#32d74b]" : "bg-gray-300"}`}
+                className="h-full rounded-full transition-all duration-700 ease-out bg-gray-300"
                 style={{ width: `${Math.min(overallPercent, 100)}%` }}
               ></div>
             </div>
@@ -634,7 +582,6 @@ export default function Goals() {
                 <X size={20} />
               </button>
             </div>
-
             {editState.type !== "g_initial" &&
               editState.type !== "m_budget" && (
                 <div
@@ -656,7 +603,6 @@ export default function Goals() {
                   </button>
                 </div>
               )}
-
             <div className="relative w-full mb-4">
               <span
                 className={`absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}
@@ -682,8 +628,6 @@ export default function Goals() {
                 </button>
               )}
             </div>
-
-            {/* Chú thích thông minh cho người dùng dễ hiểu */}
             {editState.type === "m_budget" &&
               (!editState.value || editState.value === "0") && (
                 <p
@@ -693,7 +637,6 @@ export default function Goals() {
                   restoring Auto-sum.
                 </p>
               )}
-
             <button
               onClick={handleSave}
               className={`w-full py-4 rounded-2xl font-bold text-[17px] active:scale-[0.98] transition-transform ${theme === "dark" ? "bg-white text-black" : "bg-black text-white"}`}
